@@ -142,3 +142,28 @@ OPTIONS_DATA_PROVIDER=tradier TRADIER_TOKEN=xxx npm run smoke:options -- --ticke
 ```
 
 The smoke test checks normalized response shape, put count, mid, delta, and DTE. It only validates data reads and must never be extended to trade or place orders. Keep tokens in local `.env` or shell environment only.
+
+## Tradier Provider Check
+
+Tradier is implemented for market/options chain reads only. Do not add order or trading endpoints.
+
+Use a local `.env` for token safety:
+
+```bash
+OPTIONS_DATA_PROVIDER=tradier
+TRADIER_TOKEN=your_token_here
+```
+
+Run the smoke test:
+
+```bash
+npm run smoke:options -- --provider tradier --ticker SMH --expiration 2026-06-19
+```
+
+If the command fails with `Missing TRADIER_TOKEN for Tradier provider`, add the token to local `.env` or the shell environment. If it fails with no puts, verify the expiration is listed for that ticker.
+
+Run full local UI + proxy:
+
+```bash
+VITE_OPTIONS_API_BASE=http://localhost:8787 npm run dev:full
+```

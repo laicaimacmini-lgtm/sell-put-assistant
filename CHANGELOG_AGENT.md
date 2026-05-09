@@ -10,7 +10,7 @@ Completed:
 
 Validation:
 
-- Tests: 29 tests passed.
+- Tests: 34 tests passed.
 - Build: passed.
 - Deploy: GitHub Actions success.
 
@@ -36,7 +36,7 @@ Completed:
 
 Validation:
 
-- Tests: 29 tests passed.
+- Tests: 34 tests passed.
 - Build: passed.
 
 Commit:
@@ -67,7 +67,7 @@ Completed:
 Validation:
 
 - Smoke test: passed.
-- Tests: 29 tests passed.
+- Tests: 34 tests passed.
 - Build: passed.
 
 Commit:
@@ -75,3 +75,30 @@ Commit:
 ```text
 Add options provider smoke test
 ```
+
+## 2026-05-09
+
+Completed:
+
+- Implemented Tradier options chain provider for market data reads.
+- Added robust Tradier response mapping for array and single-object responses.
+- Added clear errors for missing token, auth failure, rejected request, unexpected format, and empty put chains.
+- Enhanced options provider smoke test output with valid mid/delta counts and sample rows.
+
+Validation:
+
+- Mock smoke test: passed.
+- Tradier missing-token smoke: clear failure.
+- Tests: 34 tests passed.
+- Build: passed.
+
+Commit:
+
+```text
+Implement Tradier options provider
+```
+
+Notes:
+
+- No token is committed.
+- No Tradier trading/order endpoint is connected.

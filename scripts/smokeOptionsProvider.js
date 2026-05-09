@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import { fetchOptionsChain } from '../server/optionsProvider.js';
 import { validateOptionsChain } from './validateOptionsChain.js';
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 function parseArgs(argv) {
   const args = {};
@@ -16,6 +16,21 @@ function parseArgs(argv) {
     if (value !== 'true') index += 1;
   }
   return args;
+}
+
+function countValidMid(puts) {
+  return puts.filter((put) => typeof put.mid === 'number' && Number.isFinite(put.mid) && put.mid > 0).length;
+}
+
+function countValidDelta(puts) {
+  return puts.filter((put) => Number.isFinite(Math.abs(Number(put.delta)))).length;
+}
+
+function printSampleRows(puts) {
+  console.log('Sample rows:');
+  for (const put of puts.slice(0, 3)) {
+    console.log(`- Strike: ${put.strike} | Bid: ${put.bid} | Ask: ${put.ask} | Mid: ${put.mid} | Delta: ${Math.abs(Number(put.delta))} | IV: ${put.iv ?? 'n/a'} | OI: ${put.openInterest} | Volume: ${put.volume} | DTE: ${put.dte}`);
+  }
 }
 
 function printReport({ provider, ticker, expiration, response, errors }) {
@@ -31,12 +46,9 @@ function printReport({ provider, ticker, expiration, response, errors }) {
   }
 
   console.log(`Puts returned: ${response.puts.length}`);
-  const sample = response.puts.find((put) => put.strike && put.mid) || response.puts[0];
-  console.log('Sample:');
-  console.log(`Strike: ${sample.strike}`);
-  console.log(`Mid: ${sample.mid}`);
-  console.log(`Delta: ${Math.abs(Number(sample.delta))}`);
-  console.log(`DTE: ${sample.dte}`);
+  console.log(`Count with valid mid: ${countValidMid(response.puts)}`);
+  console.log(`Count with delta: ${countValidDelta(response.puts)}`);
+  printSampleRows(response.puts);
 }
 
 export async function runSmokeOptionsProvider(argv = process.argv.slice(2)) {

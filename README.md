@@ -148,3 +148,30 @@ OPTIONS_DATA_PROVIDER=tradier TRADIER_TOKEN=xxx npm run smoke:options -- --ticke
 ```
 
 Never write tokens into code and never commit `.env`. The smoke test validates data reads only; it does not place trades.
+
+## Tradier Local Provider
+
+Tradier is supported through the local server proxy for market/options data only. The app does not call Tradier trading/order endpoints and does not place trades.
+
+Recommended local setup:
+
+```bash
+cp .env.example .env
+# edit .env locally; do not commit it
+OPTIONS_DATA_PROVIDER=tradier
+TRADIER_TOKEN=your_token_here
+```
+
+Smoke test:
+
+```bash
+npm run smoke:options -- --provider tradier --ticker SMH --expiration 2026-06-19
+```
+
+Full local UI + proxy:
+
+```bash
+VITE_OPTIONS_API_BASE=http://localhost:8787 npm run dev:full
+```
+
+GitHub Pages does not store provider tokens. Real options data is only available through the local proxy or a future secure backend. This remains an education and personal workflow tool, not financial advice.

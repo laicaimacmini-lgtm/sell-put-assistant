@@ -52,3 +52,36 @@ ALPACA_SECRET=
 ```
 
 `.env` is ignored by git. `.env.example` contains placeholders only.
+
+## Tradier Provider Smoke Test
+
+Tradier support uses the market data endpoint only:
+
+```text
+GET https://api.tradier.com/v1/markets/options/chains
+```
+
+It does not use trading or order endpoints.
+
+Recommended local setup keeps tokens out of shell history and git:
+
+```bash
+cp .env.example .env
+# edit .env locally; do not commit it
+OPTIONS_DATA_PROVIDER=tradier
+TRADIER_TOKEN=your_token_here
+```
+
+Run the smoke test:
+
+```bash
+npm run smoke:options -- --provider tradier --ticker SMH --expiration 2026-06-19
+```
+
+Or run the full local app with proxy:
+
+```bash
+VITE_OPTIONS_API_BASE=http://localhost:8787 npm run dev:full
+```
+
+If the smoke test returns no puts, check whether the expiration is valid for the ticker. Tradier tokens must never be committed or placed in frontend code.

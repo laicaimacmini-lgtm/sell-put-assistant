@@ -43,7 +43,7 @@ e66218f Add strike comparison table and GitHub Actions deploy
 Current test status:
 
 ```text
-29 tests passed
+34 tests passed
 ```
 
 Live URL:
@@ -85,3 +85,13 @@ npm run smoke:options
 ```
 
 It validates provider response shape and sample put fields. It does not trade, recommend trades, or expose provider tokens to the frontend.
+
+## Tradier Provider Status
+
+Tradier provider is implemented for options chain market data reads through the local server proxy. It calls only:
+
+```text
+GET /markets/options/chains
+```
+
+It requires local `TRADIER_TOKEN` and supports optional `TRADIER_BASE_URL`. Missing tokens, auth failures, rejected requests, unexpected formats, and empty put chains return clear errors. No trading or order endpoint is connected.
