@@ -2,7 +2,7 @@
   "name": "sell-put-assistant",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://YOUR_GITHUB_USERNAME.github.io/sell-put-assistant",
+  "homepage": "https://laicaimacmini-lgtm.github.io/sell-put-assistant",
   "type": "module",
   "scripts": {
     "dev": "vite",
