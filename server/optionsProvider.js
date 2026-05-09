@@ -377,12 +377,47 @@ async function fetchYahooOptionsChain({ ticker, expiration }) {
   return { ticker, expiration, source: 'yahoo', lastUpdated: new Date().toISOString(), puts };
 }
 
+async function fetchMarketDataExpirations({ ticker }) {
+  const token = requireEnv('MARKETDATA_TOKEN', 'marketdata');
+  const baseUrl = process.env.MARKETDATA_BASE_URL || 'https://api.marketdata.app/v1';
+  const url = new URL(`${baseUrl.replace(/\/$/, '')}/options/expirations/${ticker}/`);
+  url.searchParams.set('side', 'put');
+
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    throw new OptionsProviderError(
+      'MarketData.app authentication failed or plan does not allow this endpoint',
+      response.status,
+    );
+  }
+  if (!response.ok) {
+    throw new OptionsProviderError(
+      `MarketData.app expirations request failed with HTTP ${response.status}`,
+      response.status,
+    );
+  }
+
+  const data = await parseJsonResponse(response, 'MarketData.app');
+  if (data?.s === 'error') {
+    throw new OptionsProviderError(`MarketData.app rejected the request: ${data.errmsg || 'unknown error'}`, 400);
+  }
+  if (data?.s === 'no_data' || !Array.isArray(data?.expirations) || data.expirations.length === 0) {
+    throw new OptionsProviderError('No expirations returned for this ticker', 404);
+  }
+
+  return { ticker, source: 'marketdata', lastUpdated: new Date().toISOString(), expirations: data.expirations };
+}
+
 export async function fetchOptionsExpirations({ ticker, provider = process.env.OPTIONS_DATA_PROVIDER } = {}) {
   const normalizedTicker = String(ticker || '').trim().toUpperCase();
   if (!normalizedTicker) throw new OptionsProviderError('ticker is required', 400);
 
   const selectedProvider = normalizeProvider(provider);
   if (selectedProvider === 'yahoo') return fetchYahooExpirations({ ticker: normalizedTicker });
+  if (selectedProvider === 'marketdata') return fetchMarketDataExpirations({ ticker: normalizedTicker });
 
   throw new OptionsProviderError(`${selectedProvider} provider does not support expiration discovery yet. Enter an expiration manually.`, 501);
 }

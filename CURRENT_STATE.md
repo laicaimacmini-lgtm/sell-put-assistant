@@ -1,6 +1,6 @@
 # Current State
 
-Date: 2026-05-09
+Date: 2026-05-09 (updated)
 
 ## Product Status
 
@@ -13,6 +13,8 @@ Current latest functionality includes:
 - Risk sections for market trend, reward/risk, position sizing, and cash requirement.
 - Compare Put Strikes table for comparing multiple sell put candidates side by side.
 - Default SMH comparison examples for strikes 245, 240, and 235.
+- MarketData.app expiration picker: auto-fetches available put expirations and selects 30-60 DTE preferred date.
+- Smoke script auto-selects expiration for providers that support discovery (yahoo, marketdata).
 - Sorting comparison rows by reward/risk, annualized return, downside buffer, or cash required.
 - Balanced candidate highlighting that weighs reward/risk, delta, position size, strike vs support, and DTE.
 - Risk flags for poor reward/risk, aggressive delta, not enough cash, heavy size, and non-ideal DTE.

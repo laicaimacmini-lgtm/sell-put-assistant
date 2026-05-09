@@ -73,14 +73,20 @@ function printReport({ provider, ticker, expiration, response, errors }) {
   printSampleRows(response.puts);
 }
 
+const PROVIDERS_WITH_EXPIRATION_DISCOVERY = ['yahoo', 'marketdata'];
+
 async function resolveExpiration({ ticker, provider, expiration }) {
   if (expiration) return expiration;
-  if (provider !== 'yahoo') return '2026-06-19';
+  if (!PROVIDERS_WITH_EXPIRATION_DISCOVERY.includes(provider)) {
+    throw new Error(
+      `No expiration supplied and ${provider} does not support expiration discovery. Pass --expiration YYYY-MM-DD.`,
+    );
+  }
 
   const response = await fetchOptionsExpirations({ ticker, provider });
   const selectedExpiration = pickSmokeExpiration(response.expirations);
-  if (!selectedExpiration) throw new Error('No Yahoo Finance expirations returned for smoke test.');
-  console.log(`Selected expiration: ${selectedExpiration}`);
+  if (!selectedExpiration) throw new Error(`No expirations returned for smoke test from ${provider}.`);
+  console.log(`Auto-selected expiration: ${selectedExpiration}`);
   return selectedExpiration;
 }
 

@@ -267,4 +267,40 @@ describe('optionsProvider', () => {
 
     await expect(fetchOptionsChain({ ticker: 'SMH', expiration: '2026-06-19', provider: 'tradier' })).rejects.toThrow(/No puts returned. Check whether expiration is valid/i);
   });
+
+  it('fetches MarketData.app expirations and maps them correctly', async () => {
+    vi.stubEnv('MARKETDATA_TOKEN', 'md-token');
+    vi.stubEnv('MARKETDATA_BASE_URL', 'https://marketdata.test/v1');
+    mockProviderResponse({ s: 'ok', expirations: ['2026-06-20', '2026-07-18', '2026-08-21'] });
+
+    const result = await fetchOptionsExpirations({ ticker: 'SMH', provider: 'marketdata' });
+
+    expect(result).toEqual({
+      ticker: 'SMH',
+      source: 'marketdata',
+      lastUpdated: expect.any(String),
+      expirations: ['2026-06-20', '2026-07-18', '2026-08-21'],
+    });
+  });
+
+  it('returns a clear error when MarketData.app returns no_data for expirations', async () => {
+    vi.stubEnv('MARKETDATA_TOKEN', 'md-token');
+    vi.stubEnv('MARKETDATA_BASE_URL', 'https://marketdata.test/v1');
+    mockProviderResponse({ s: 'no_data' });
+
+    await expect(fetchOptionsExpirations({ ticker: 'FAKE', provider: 'marketdata' })).rejects.toThrow(/No expirations returned/i);
+  });
+
+  it('returns a clear error when MarketData.app token is missing for expirations', async () => {
+    await expect(fetchOptionsExpirations({ ticker: 'SMH', provider: 'marketdata' })).rejects.toThrow(/Missing MARKETDATA_TOKEN/i);
+  });
+
+  it('returns a clear auth error when MarketData.app returns 401 for expirations', async () => {
+    vi.stubEnv('MARKETDATA_TOKEN', 'bad-token');
+    vi.stubEnv('MARKETDATA_BASE_URL', 'https://marketdata.test/v1');
+    mockProviderResponse({ error: 'Unauthorized' }, 401);
+
+    await expect(fetchOptionsExpirations({ ticker: 'SMH', provider: 'marketdata' })).rejects.toThrow(/authentication failed/i);
+  });
+
 });

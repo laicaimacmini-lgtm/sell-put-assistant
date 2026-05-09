@@ -1,5 +1,20 @@
 # Agent Changelog
 
+## 2026-05-09 — Add MarketData expiration picker
+
+### Changes
+- server/optionsProvider.js: Added `fetchMarketDataExpirations` calling `GET /v1/options/expirations/{ticker}/?side=put`
+- server/optionsProvider.js: `fetchOptionsExpirations` now dispatches to marketdata provider
+- scripts/smokeOptionsProvider.js: `resolveExpiration` auto-calls `fetchOptionsExpirations` for yahoo and marketdata providers; logs `Auto-selected expiration:`
+- src/lib/optionsChain.js: Added `pickExpiration` helper (30-60 DTE preferred, fallback to nearest future)
+- src/components/RealOptionsPanel.jsx: `handleFetchExpirations` now uses `pickExpiration` for auto-selection
+- server/optionsProvider.test.js: 4 new MarketData expirations tests (mapping, no_data, missing token, 401)
+
+### Test results
+- 53/53 tests pass
+- Build: success
+
+
 ## 2026-05-09
 
 Completed:

@@ -65,6 +65,17 @@ export function selectPutsForComparison(puts = [], fallbackSupport, maxRows = 5,
   return selected.map((put) => normalizePutForComparison(put, fallbackSupport));
 }
 
+
+export function pickExpiration(expirations = []) {
+  const now = new Date();
+  const future = expirations
+    .map((d) => ({ date: d, dte: Math.round((new Date(d + 'T00:00:00Z') - now) / 86400000) }))
+    .filter((e) => e.dte > 0)
+    .sort((a, b) => a.dte - b.dte);
+  const preferred = future.find((e) => e.dte >= 30 && e.dte <= 60);
+  return (preferred || future[0])?.date ?? null;
+}
+
 export async function fetchOptionsChain({ ticker, expiration, provider, apiBase = getOptionsApiBase() }) {
   if (!apiBase) {
     throw new Error('Real options data requires the local API proxy. Run npm run server locally.');

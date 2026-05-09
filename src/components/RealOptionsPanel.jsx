@@ -4,6 +4,7 @@ import {
   fetchOptionsChain,
   fetchOptionsExpirations,
   getOptionsApiBase,
+  pickExpiration,
   hasUnavailableDelta,
   selectPutsForComparison,
 } from '../lib/optionsChain';
@@ -48,8 +49,10 @@ export default function RealOptionsPanel({ form, onUseComparisonRows }) {
     setError('');
     try {
       const payload = await fetchOptionsExpirations({ ticker, provider });
-      setExpirations(payload.expirations || []);
-      if (payload.expirations?.[0]) setExpiration(payload.expirations[0]);
+      const list = payload.expirations || [];
+      setExpirations(list);
+      const auto = pickExpiration(list);
+      if (auto) setExpiration(auto);
     } catch (fetchError) {
       setExpirations([]);
       setError(fetchError.message);
