@@ -79,3 +79,89 @@ http://localhost:5173/sell-put-assistant/
 - MARKETDATA_TOKEN is never printed, never committed, never sent to the frontend
 - This tool is a personal risk/reward workflow helper, not financial advice
 - No order placement or automated trading is connected
+
+---
+
+## Background Dev Service (recommended for persistent access)
+
+Instead of keeping a terminal open with `npm run dev:marketdata`, run it as a background service on mac2.
+
+### Start the background service
+
+On mac2:
+
+```bash
+cd /Users/laicai/projects/sell-put-assistant
+npm run bg:marketdata:start
+```
+
+The service starts Express (port 8787) and Vite (port 5173) as detached background processes. Logs go to `.runtime/marketdata-dev.log`.
+
+### Access from your local machine
+
+**Terminal 1 — SSH tunnel (keep open):**
+
+```bash
+ssh -L 5173:127.0.0.1:5173 -L 8787:127.0.0.1:8787 mac2
+```
+
+**Browser:**
+
+```
+http://localhost:5173/sell-put-assistant/
+```
+
+### Check status
+
+```bash
+npm run bg:marketdata:status
+```
+
+### View logs
+
+```bash
+npm run bg:marketdata:logs
+```
+
+### Stop
+
+```bash
+npm run bg:marketdata:stop
+```
+
+### Restart (e.g. after code changes)
+
+```bash
+npm run bg:marketdata:restart
+```
+
+### Update workflow (after pulling new commits)
+
+```bash
+ssh mac2
+cd /Users/laicai/projects/sell-put-assistant
+git pull --ff-only
+npm install
+npm run test
+npm run build
+npm run bg:marketdata:restart
+```
+
+Or use the convenience script (only when working tree is clean):
+
+```bash
+npm run update:marketdata
+```
+
+> **Warning:** `update:marketdata` runs `git pull --ff-only`. Only use it when there are no uncommitted local changes.
+
+### Runtime files
+
+`.runtime/` is gitignored. It contains:
+
+| File | Contents |
+|---|---|
+| `server.pid` | Express process PID |
+| `vite.pid` | Vite process PID |
+| `marketdata-dev.log` | Combined stdout/stderr log |
+

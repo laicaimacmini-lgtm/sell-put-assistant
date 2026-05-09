@@ -192,3 +192,35 @@ Commit: Add Yahoo options provider fallback
 - Smoke test PASS: SMH 2026-06-05 — 131 puts, all with delta, all Greeks present
 - npm run test: 49/49 pass
 - npm run build: clean
+
+## 2026-05-09 — Add MarketData background dev service
+
+Added `scripts/marketDataDevService.js` for persistent background process management.
+
+### Changes
+
+- `scripts/marketDataDevService.js`: new ESM script — start/stop/restart/status/logs
+  - Spawns detached Express server (port 8787) and Vite (port 5173) as background processes
+  - Writes pid files to `.runtime/server.pid` and `.runtime/vite.pid`
+  - Appends all stdout/stderr to `.runtime/marketdata-dev.log`
+  - Verifies ports are listening after start; confirms ports released after stop
+  - Redacts token-shaped values from status/log output
+  - Binds Vite to 127.0.0.1 only — not public network
+- `package.json`: added 6 new scripts
+  - `bg:marketdata:start`, `bg:marketdata:stop`, `bg:marketdata:restart`
+  - `bg:marketdata:status`, `bg:marketdata:logs`, `update:marketdata`
+- `.gitignore`: added `.runtime/` and `*.log`
+- `LOCAL_DEV.md`: added "Background Dev Service" section with full workflow
+- `RUNBOOK.md`: added "Background MarketData Dev Service" section
+- `CURRENT_STATE.md`: updated with new scripts and background service status
+
+### Validation
+
+- `npm run smoke:marketdata`: PASS (SMH, auto-selected 2026-06-12, 117 puts, 117 with delta)
+- `npm run test`: 53/53 passed
+- `npm run build`: clean (224.85 kB JS, 9.56 kB CSS)
+- `npm run bg:marketdata:start`: ✓ port 8787 listening, ✓ port 5173 listening
+- `npm run bg:marketdata:status`: ✓ both pids running
+- `npm run bg:marketdata:restart`: ✓ clean stop + start cycle
+- API verified: `curl http://localhost:8787/api/options-expirations?ticker=SMH&provider=marketdata` → 22 expirations
+- Background service left running for immediate SSH tunnel access

@@ -156,3 +156,17 @@ MarketData.app provider fully validated end-to-end.
 - Valid SMH expirations: 2026-06-05, 2026-06-12, 2026-07-17
 - Invalid expirations (no_data): 2026-05-16, 2026-05-30, 2026-06-19, 2026-06-20
 - All 49 tests pass, production build clean
+
+## Background MarketData Dev Service (2026-05-09)
+
+A persistent background dev service is now available for MarketData.app local development.
+
+- `npm run bg:marketdata:start` — start Express (8787) + Vite (5173) as detached background processes
+- `npm run bg:marketdata:stop` — stop via pid files
+- `npm run bg:marketdata:restart` — stop + start (use after code changes)
+- `npm run bg:marketdata:status` — pid health + port status + last 20 log lines
+- `npm run bg:marketdata:logs` — last 100 lines of `.runtime/marketdata-dev.log`
+- `npm run update:marketdata` — git pull + install + test + build + restart (clean tree only)
+- Service binds only to 127.0.0.1 — not exposed to public network
+- `.runtime/` is gitignored; contains pid files and combined log
+- `LOCAL_DEV.md` updated with background workflow and SSH tunnel instructions

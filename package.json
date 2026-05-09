@@ -16,7 +16,13 @@
     "smoke:options": "node scripts/smokeOptionsProvider.js",
     "server:marketdata": "OPTIONS_DATA_PROVIDER=marketdata node server/index.js",
     "dev:marketdata": "OPTIONS_DATA_PROVIDER=marketdata VITE_OPTIONS_API_BASE=http://localhost:8787 concurrently \"npm run server:marketdata\" \"npm run dev\"",
-    "smoke:marketdata": "npm run smoke:options -- --provider marketdata --ticker SMH"
+    "smoke:marketdata": "npm run smoke:options -- --provider marketdata --ticker SMH",
+    "bg:marketdata:start": "node scripts/marketDataDevService.js start",
+    "bg:marketdata:stop": "node scripts/marketDataDevService.js stop",
+    "bg:marketdata:restart": "node scripts/marketDataDevService.js restart",
+    "bg:marketdata:status": "node scripts/marketDataDevService.js status",
+    "bg:marketdata:logs": "node scripts/marketDataDevService.js logs",
+    "update:marketdata": "git pull --ff-only && npm install && npm run test && npm run build && npm run bg:marketdata:restart"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.1.1",

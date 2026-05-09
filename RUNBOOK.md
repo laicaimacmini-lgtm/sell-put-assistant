@@ -245,3 +245,42 @@ http://localhost:5173/sell-put-assistant/
 ```
 
 See `LOCAL_DEV.md` for the full step-by-step guide including troubleshooting.
+
+## Background MarketData Dev Service
+
+Run the MarketData.app local dev mode as a persistent background service on mac2.
+
+### Start
+
+```bash
+cd /Users/laicai/projects/sell-put-assistant
+npm run bg:marketdata:start
+```
+
+### SSH tunnel (local machine)
+
+```bash
+ssh -L 5173:127.0.0.1:5173 -L 8787:127.0.0.1:8787 mac2
+```
+
+Browser: `http://localhost:5173/sell-put-assistant/`
+
+### Manage the service
+
+```bash
+npm run bg:marketdata:status   # show pid/port health + last 20 log lines
+npm run bg:marketdata:logs     # last 100 log lines
+npm run bg:marketdata:restart  # stop + start
+npm run bg:marketdata:stop     # shut down
+```
+
+### Update after new commits
+
+```bash
+git pull --ff-only && npm install && npm run test && npm run build && npm run bg:marketdata:restart
+# or:
+npm run update:marketdata
+```
+
+Only run `update:marketdata` when the working tree is clean (no local uncommitted changes).
+
