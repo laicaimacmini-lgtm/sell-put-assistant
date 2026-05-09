@@ -14,45 +14,7 @@ import {
   Target,
   TrendingUp,
 } from 'lucide-react';
-
-const watchlist = ['QQQ', 'SMH', 'NVDA', 'MU', 'AVGO', 'MSFT', 'AMZN', 'QLD', 'JAAA'];
-
-const initialForm = {
-  ticker: 'SMH',
-  currentPrice: 255,
-  strike: 240,
-  premium: 4.2,
-  dte: 45,
-  delta: 0.22,
-  support: 235,
-  target: 270,
-  cash: 50000,
-  contracts: 1,
-  broker: 'E*Trade',
-};
-
-const brokerNotes = {
-  'E*Trade': [
-    'Confirm option level supports cash-secured puts.',
-    'Use Sell to Open.',
-    'Choose Put.',
-    'Check expiration, strike, bid/ask spread, and limit price.',
-    'Avoid market orders.',
-    'Confirm cash required before submitting.',
-  ],
-  Fidelity: [
-    'Use Sell to Open.',
-    'Select Put contract.',
-    'Use limit order.',
-    'Confirm cash-secured requirement.',
-    'Check assignment risk before expiration.',
-  ],
-  Other: [
-    'Use sell-to-open put.',
-    'Use limit order.',
-    'Confirm assignment and cash requirement.',
-  ],
-};
+import { brokerNotes, calculateSetup, initialForm, toNumber, watchlist } from './lib/calculateSetup';
 
 const numberFields = new Set([
   'currentPrice',
@@ -65,11 +27,6 @@ const numberFields = new Set([
   'cash',
   'contracts',
 ]);
-
-function toNumber(value) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
 
 function currency(value, digits = 2) {
   return new Intl.NumberFormat('en-US', {
@@ -84,59 +41,6 @@ function percent(value, digits = 1) {
   return `${((Number.isFinite(value) ? value : 0) * 100).toFixed(digits)}%`;
 }
 
-function classifyDte(dte) {
-  if (dte >= 30 && dte <= 45) return { label: 'Good', tone: 'good', text: '30-45 DTE fits the preferred wheel window.' };
-  if (dte >= 21 && dte <= 60) return { label: 'Acceptable', tone: 'watch', text: 'DTE is workable, but less ideal than the 30-45 day window.' };
-  return { label: 'Not Ideal', tone: 'danger', text: 'Expiration timing is outside the preferred range.' };
-}
-
-function classifyDelta(delta) {
-  if (delta >= 0.15 && delta <= 0.3) return { label: 'Reasonable', tone: 'good', text: 'Delta is in the balanced income/risk range.' };
-  if (delta > 0.3 && delta <= 0.4) return { label: 'Higher Risk', tone: 'watch', text: 'Premium may be richer, but assignment risk is higher.' };
-  if (delta > 0.4) return { label: 'Aggressive', tone: 'danger', text: 'Delta is aggressive for a cash-secured put entry.' };
-  return { label: 'Low Yield', tone: 'neutral', text: 'Delta is safer, but premium may be too thin.' };
-}
-
-function classifyStrike(strike, support) {
-  const spread = Math.abs(strike - support) / Math.max(1, support);
-  if (strike < support) return { label: 'Conservative', tone: 'good', text: 'Strike is below support.' };
-  if (spread <= 0.02) return { label: 'Near Support', tone: 'watch', text: 'Strike is close to support. Confirm the level still holds.' };
-  return { label: 'Above Support', tone: 'danger', text: 'Strike sits above support and may be aggressive.' };
-}
-
-function classifyRewardRisk(rr) {
-  if (rr >= 2) return { label: 'Good', tone: 'good', text: 'Reward/risk is strong enough for a higher quality setup review.' };
-  if (rr >= 1.5) return { label: 'Small Size Only', tone: 'watch', text: 'Reward/risk is acceptable only for a smaller observation-sized setup.' };
-  return { label: 'Avoid Chasing', tone: 'danger', text: 'Reward/risk is below 1.5. Do not chase unless premium improves or strike moves lower.' };
-}
-
-function classifyCash(cashRequired, cash) {
-  if (cashRequired > cash) return { label: 'Not Enough Cash', tone: 'danger', text: 'Cash requirement exceeds available cash.' };
-  const usage = cash > 0 ? cashRequired / cash : 1;
-  if (usage <= 0.2) return { label: 'Healthy', tone: 'good', text: 'Position size uses 20% or less of available cash.' };
-  if (usage <= 0.4) return { label: 'Medium', tone: 'watch', text: 'Position size is meaningful. Keep total portfolio exposure in view.' };
-  return { label: 'Heavy', tone: 'danger', text: 'Position size is heavy for one cash-secured put setup.' };
-}
-
-function getRating({ cashRule, rewardRiskRule, deltaRule, strikeRule, dteRule }) {
-  if (cashRule.label === 'Not Enough Cash') return 'Not Enough Cash';
-  if (rewardRiskRule.tone === 'danger') return 'Poor Risk/Reward';
-  if (deltaRule.label === 'Aggressive' || strikeRule.label === 'Above Support') return 'Too Aggressive';
-  if (rewardRiskRule.tone === 'good' && dteRule.tone === 'good' && cashRule.tone === 'good') return 'Good Setup';
-  return 'Watchlist Only';
-}
-
-function getSuggestedAction(rating) {
-  const actions = {
-    'Good Setup': 'This looks like a reasonable 30-45 DTE cash-secured put candidate, but still confirm market trend, reward/risk, position sizing, and avoid selling after a sharp gap-down.',
-    'Watchlist Only': 'Keep this on watch. The setup is not disqualified, but confirm market trend and consider smaller size unless reward/risk and cash usage improve.',
-    'Too Aggressive': 'The setup is leaning aggressive. Consider a lower strike, better support confirmation, smaller contract count, or waiting for a cleaner market trend.',
-    'Not Enough Cash': 'Cash requirement exceeds available cash. Do not place this trade as a cash-secured put.',
-    'Poor Risk/Reward': 'Reward/risk is below 1.5. Avoid chasing this setup unless premium improves or strike moves lower.',
-  };
-  return actions[rating];
-}
-
 function Badge({ tone, children }) {
   return <span className={`badge ${tone}`}>{children}</span>;
 }
@@ -145,7 +49,7 @@ function Field({ label, name, value, onChange, type = 'number', step = '0.01' })
   return (
     <label className="field">
       <span>{label}</span>
-      <input type={type} step={step} name={name} value={value} onChange={onChange} />
+      <input aria-label={label} type={type} step={step} name={name} value={value} onChange={onChange} />
     </label>
   );
 }
@@ -176,66 +80,7 @@ function Metric({ label, value, accent }) {
 
 export default function App() {
   const [form, setForm] = useState(initialForm);
-
-  const data = useMemo(() => {
-    const currentPrice = toNumber(form.currentPrice);
-    const strike = toNumber(form.strike);
-    const premium = toNumber(form.premium);
-    const dte = Math.max(0, toNumber(form.dte));
-    const delta = toNumber(form.delta);
-    const support = toNumber(form.support);
-    const target = toNumber(form.target);
-    const cash = toNumber(form.cash);
-    const contracts = Math.max(0, Math.floor(toNumber(form.contracts)));
-
-    const cashRequired = strike * 100 * contracts;
-    const maxProfit = premium * 100 * contracts;
-    const breakeven = strike - premium;
-    const returnOnCash = cashRequired > 0 ? maxProfit / cashRequired : 0;
-    const annualizedReturn = dte > 0 ? returnOnCash * 365 / dte : 0;
-    const downsideBuffer = currentPrice > 0 ? (currentPrice - breakeven) / currentPrice : 0;
-    const distanceToSupport = currentPrice > 0 ? (currentPrice - support) / currentPrice : 0;
-    const reward = premium;
-    const risk = Math.max(0.01, breakeven - support);
-    const rewardRisk = reward / risk;
-    const cashUsage = cash > 0 ? cashRequired / cash : 0;
-    const upsideToTarget = currentPrice > 0 ? (target - currentPrice) / currentPrice : 0;
-
-    const dteRule = classifyDte(dte);
-    const deltaRule = classifyDelta(delta);
-    const strikeRule = classifyStrike(strike, support);
-    const rewardRiskRule = classifyRewardRisk(rewardRisk);
-    const cashRule = classifyCash(cashRequired, cash);
-    const rating = getRating({ cashRule, rewardRiskRule, deltaRule, strikeRule, dteRule });
-
-    return {
-      currentPrice,
-      strike,
-      premium,
-      dte,
-      delta,
-      support,
-      target,
-      cash,
-      contracts,
-      cashRequired,
-      maxProfit,
-      breakeven,
-      returnOnCash,
-      annualizedReturn,
-      downsideBuffer,
-      distanceToSupport,
-      rewardRisk,
-      cashUsage,
-      upsideToTarget,
-      dteRule,
-      deltaRule,
-      strikeRule,
-      rewardRiskRule,
-      cashRule,
-      rating,
-    };
-  }, [form]);
+  const data = useMemo(() => calculateSetup(form), [form]);
 
   function updateField(event) {
     const { name, value } = event.target;
@@ -285,7 +130,7 @@ export default function App() {
 
           <label className="field ticker-field">
             <span>Ticker</span>
-            <input type="text" name="ticker" value={form.ticker} onChange={updateField} />
+            <input aria-label="Ticker" type="text" name="ticker" value={form.ticker} onChange={updateField} />
           </label>
 
           <div className="form-grid">
@@ -300,7 +145,7 @@ export default function App() {
             <Field label="Contract Count" name="contracts" value={form.contracts} onChange={updateField} step="1" />
             <label className="field">
               <span>Broker</span>
-              <select name="broker" value={form.broker} onChange={updateSelect}>
+              <select aria-label="Broker" name="broker" value={form.broker} onChange={updateSelect}>
                 <option>E*Trade</option>
                 <option>Fidelity</option>
                 <option>Other</option>
@@ -313,10 +158,10 @@ export default function App() {
           <div className="rating-card">
             <div>
               <span className="section-label">Setup Rating</span>
-              <h2>{data.rating}</h2>
-              <p>{getSuggestedAction(data.rating)}</p>
+              <h2>{data.setupRating}</h2>
+              <p>{data.suggestedAction}</p>
             </div>
-            <div className={`rating-badge ${data.rating.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>
+            <div className={`rating-badge ${data.setupRating.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>
               <Gauge size={22} />
               {data.rewardRisk.toFixed(2)} R/R
             </div>
@@ -369,7 +214,7 @@ export default function App() {
           <ul>
             <li>Cash required is {currency(data.cashRequired, 0)} for {data.contracts} contract(s).</li>
             <li>Current cash usage is {percent(data.cashUsage)} of available cash.</li>
-            <li>Keep total portfolio exposure in view before adding correlated positions.</li>
+            <li>{data.cashRule.text}</li>
           </ul>
         </article>
 
