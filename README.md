@@ -46,7 +46,26 @@ To preview the production build locally:
 npm run preview
 ```
 
-## GitHub Pages Deployment
+
+## Deployment
+
+GitHub Pages deployment now runs through GitHub Actions. Every push to `main` triggers a workflow that installs dependencies, runs tests, builds the Vite app, and deploys `dist/` to GitHub Pages.
+
+Live URL:
+
+```text
+https://laicaimacmini-lgtm.github.io/sell-put-assistant
+```
+
+For first-time setup, set the repository Pages source to GitHub Actions:
+
+```text
+Settings -> Pages -> Source -> GitHub Actions
+```
+
+The `npm run deploy` script is kept only as a legacy/manual fallback for the older `gh-pages` branch workflow. The recommended deployment path is GitHub Actions on push to `main`.
+
+## Legacy Manual Deployment
 
 This project is configured for GitHub Pages with Vite base path `/sell-put-assistant/` and the `gh-pages` package.
 

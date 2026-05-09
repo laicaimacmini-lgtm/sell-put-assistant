@@ -1,4 +1,32 @@
-# GitHub Pages Deployment Workflow
+# GitHub Actions Deployment
+
+The recommended deployment path is now GitHub Actions, not the legacy manual `npm run deploy` / `gh-pages` branch flow.
+
+Each push to `main` runs `.github/workflows/deploy.yml`:
+
+1. Check out the repo.
+2. Set up Node 20.
+3. Install dependencies with `npm ci`.
+4. Run `npm run test`.
+5. Run `npm run build`.
+6. Upload `./dist` as a Pages artifact.
+7. Deploy using GitHub's official Pages Actions.
+
+Repository Pages settings should be:
+
+```text
+Settings -> Pages -> Build and deployment -> Source: GitHub Actions
+```
+
+The old `npm run deploy` command is retained as a legacy/manual fallback only. Prefer pushing to `main` and letting Actions deploy after tests pass.
+
+## GitHub Actions Troubleshooting
+
+- If the page does not update, check the repository Actions tab first and confirm the latest "Deploy GitHub Pages" run succeeded.
+- If Pages does not deploy, check `Settings -> Pages` and confirm the source is set to `GitHub Actions`.
+- If tests fail in Actions, deployment is blocked. That is expected because failed tests should prevent publishing.
+
+# Legacy Manual Deployment Workflow
 
 This project is deployed from mac2 using GitHub CLI, SSH remotes, Vite, and the `gh-pages` npm package.
 
