@@ -76,3 +76,47 @@ If Actions deployment does not update the page:
 2. Confirm the latest `Deploy GitHub Pages` run succeeded.
 3. Confirm Pages source is `GitHub Actions`.
 4. If tests failed, fix the failing test or code path before deploying.
+
+## Local Options Proxy
+
+Real options data uses a local Node proxy so API keys never enter the GitHub Pages frontend.
+
+Setup:
+
+```bash
+cd /Users/laicai/projects/sell-put-assistant
+cp .env.example .env
+```
+
+Default mock provider:
+
+```bash
+OPTIONS_DATA_PROVIDER=mock
+```
+
+Future Tradier provider:
+
+```bash
+OPTIONS_DATA_PROVIDER=tradier
+TRADIER_TOKEN=your-local-token-only
+```
+
+Run proxy + Vite together:
+
+```bash
+VITE_OPTIONS_API_BASE=http://localhost:8787 npm run dev:full
+```
+
+Run proxy only:
+
+```bash
+npm run server
+```
+
+Endpoint:
+
+```text
+GET http://localhost:8787/api/options-chain?ticker=SMH&expiration=2026-06-19
+```
+
+GitHub Pages will not call mac2 localhost. Without `VITE_OPTIONS_API_BASE`, the UI shows a local proxy reminder.

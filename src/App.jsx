@@ -17,6 +17,7 @@ import {
   Trash2,
   TrendingUp,
 } from 'lucide-react';
+import RealOptionsPanel from './components/RealOptionsPanel';
 import {
   brokerNotes,
   calculateSetup,
@@ -260,6 +261,11 @@ export default function App() {
     setSortBy('rewardRisk');
   }
 
+  function useRealOptionsRows(rows) {
+    setComparisonRows(rows);
+    setSortBy('rewardRisk');
+  }
+
   return (
     <main className="app-shell">
       <section className="hero">
@@ -354,6 +360,8 @@ export default function App() {
           </div>
         </section>
       </div>
+
+      <RealOptionsPanel form={form} onUseComparisonRows={useRealOptionsRows} />
 
       <StrikeComparison
         form={form}

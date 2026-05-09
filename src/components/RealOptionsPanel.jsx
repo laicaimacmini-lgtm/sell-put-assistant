@@ -1,0 +1,93 @@
+import { useMemo, useState } from 'react';
+import { Cloud, Database, Loader2 } from 'lucide-react';
+import { fetchOptionsChain, getOptionsApiBase, selectPutsForComparison } from '../lib/optionsChain';
+
+function Badge({ tone, children }) {
+  return <span className={`badge ${tone}`}>{children}</span>;
+}
+
+function defaultExpiration() {
+  const date = new Date();
+  date.setDate(date.getDate() + 45);
+  return date.toISOString().slice(0, 10);
+}
+
+export default function RealOptionsPanel({ form, onUseComparisonRows }) {
+  const [ticker, setTicker] = useState(form.ticker || 'SMH');
+  const [expiration, setExpiration] = useState(defaultExpiration());
+  const [chain, setChain] = useState(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const apiBase = getOptionsApiBase();
+
+  const selectedRows = useMemo(
+    () => selectPutsForComparison(chain?.puts || [], form.support, 5),
+    [chain, form.support],
+  );
+
+  async function handleFetch() {
+    setLoading(true);
+    setError('');
+    setChain(null);
+    try {
+      const payload = await fetchOptionsChain({ ticker, expiration });
+      setChain(payload);
+    } catch (fetchError) {
+      setError(fetchError.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleUseRows() {
+    if (selectedRows.length > 0) onUseComparisonRows(selectedRows);
+  }
+
+  return (
+    <section className="panel real-options-panel">
+      <div className="real-options-header">
+        <div>
+          <h2><Cloud size={18} /> Real Options Data</h2>
+          <p>Fetch a put chain through a local proxy, then use filtered puts in the comparison table.</p>
+        </div>
+        <Badge tone={chain?.source === 'mock' || !apiBase ? 'neutral' : 'good'}>
+          {chain?.source || (apiBase ? 'proxy ready' : 'local proxy required')}
+        </Badge>
+      </div>
+
+      {!apiBase && (
+        <div className="proxy-note">
+          Real options data requires the local API proxy. Run <code>npm run server</code> locally and set <code>VITE_OPTIONS_API_BASE=http://localhost:8787</code> for local development.
+        </div>
+      )}
+
+      <div className="real-options-grid">
+        <label className="field">
+          <span>Ticker</span>
+          <input aria-label="Options ticker" type="text" value={ticker} onChange={(event) => setTicker(event.target.value.toUpperCase())} />
+        </label>
+        <label className="field">
+          <span>Expiration</span>
+          <input aria-label="Options expiration" type="date" value={expiration} onChange={(event) => setExpiration(event.target.value)} />
+        </label>
+        <button type="button" className="fetch-button" onClick={handleFetch} disabled={loading || !apiBase}>
+          {loading ? <Loader2 size={16} className="spin" /> : <Database size={16} />}
+          Fetch Put Chain
+        </button>
+      </div>
+
+      {error && <div className="error-state">{error}</div>}
+      {chain && (
+        <div className="success-state">
+          <div>
+            <strong>{chain.puts.length} puts fetched</strong>
+            <span>{selectedRows.length} candidates match delta, DTE, and bid/ask filters.</span>
+          </div>
+          <button type="button" className="fetch-button secondary" onClick={handleUseRows} disabled={selectedRows.length === 0}>
+            Use in Comparison Table
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}

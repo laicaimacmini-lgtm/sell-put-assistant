@@ -43,11 +43,35 @@ e66218f Add strike comparison table and GitHub Actions deploy
 Current test status:
 
 ```text
-20 tests passed
+26 tests passed
 ```
 
 Live URL:
 
 ```text
 https://laicaimacmini-lgtm.github.io/sell-put-assistant
+```
+
+## Real Options Data Architecture
+
+First-stage Real Options Data architecture has been added. It includes:
+
+- Local Express proxy under `server/`.
+- Mock options provider for SMH, NVDA, and MU.
+- Provider abstraction for `mock | tradier | marketdata | alpaca`.
+- Tradier request/mapping stub with server-side token checks.
+- Frontend Real Options Data panel that fetches through `VITE_OPTIONS_API_BASE` when configured.
+- GitHub Pages-safe behavior when no API base is configured.
+
+Security boundaries:
+
+- No API token is stored in frontend code.
+- No API token is committed to git.
+- Real trading APIs and order placement are out of scope.
+- The tool remains education/personal workflow only, not financial advice.
+
+Latest real options architecture commit:
+
+```text
+2934013 Add real options data proxy architecture
 ```

@@ -89,3 +89,38 @@ The deploy script publishes the `dist` folder to the `gh-pages` branch.
 ## Disclaimer
 
 For education and personal workflow only. Not financial advice. This tool does not connect to brokerage APIs, does not guarantee returns, does not recommend securities, and does not automate trading. Always review risk/reward, position sizing, cash requirement, market trend, assignment risk, and your own account constraints before making any decision.
+
+## Real Options Data
+
+The app now includes a Real Options Data panel for future real put-chain workflows. GitHub Pages remains a static frontend and does not contain API tokens. Real options data must go through the local Node proxy in `server/`.
+
+Local full-stack dev:
+
+```bash
+cp .env.example .env
+VITE_OPTIONS_API_BASE=http://localhost:8787 npm run dev:full
+```
+
+Run only the proxy:
+
+```bash
+npm run server
+```
+
+Provider selection is server-side only:
+
+```bash
+OPTIONS_DATA_PROVIDER=mock
+OPTIONS_DATA_PROVIDER=tradier
+```
+
+Secrets stay in local `.env` and must never be committed or added to frontend code:
+
+```bash
+TRADIER_TOKEN=
+MARKETDATA_TOKEN=
+ALPACA_KEY=
+ALPACA_SECRET=
+```
+
+If `VITE_OPTIONS_API_BASE` is not set, the GitHub Pages UI shows a local proxy reminder instead of throwing an error. This project does not connect to trading APIs and does not place orders.

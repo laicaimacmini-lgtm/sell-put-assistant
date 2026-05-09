@@ -34,3 +34,16 @@ Reasons:
 - Reward/risk, annualized return, downside buffer, and cash usage need to be viewed together.
 - The balanced recommendation avoids treating a single high-yield signal as a trade decision.
 - It reinforces the user's framework: market trend, reward/risk, position sizing, and cash requirement remain separate checks.
+
+## Keep Options Tokens Server-Side
+
+Real options data is routed through a local proxy instead of the static GitHub Pages frontend.
+
+Reasons:
+
+- GitHub Pages cannot safely hold provider tokens.
+- API keys must stay in local `.env` files or future server-side secret storage.
+- The frontend should only consume normalized put-chain data and never know provider credentials.
+- This keeps the project as a decision-support workflow tool, not a trading integration.
+
+The first implementation uses mock data by default and reserves Tradier, MarketData.app, and Alpaca for future provider work.
