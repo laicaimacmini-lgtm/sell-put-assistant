@@ -145,3 +145,17 @@ Changes:
 - Mock smoke: PASS. Yahoo smoke: expected FAIL (unofficial endpoint unavailable - clear error)
 
 Commit: Add Yahoo options provider fallback
+
+## 2026-05-09 — MarketData URL bug fix and full validation
+
+### Bug Fixed
+- fetchMarketDataOptionsChain used new URL(path, base) with an absolute path, which dropped the /v1 segment from MARKETDATA_BASE_URL. Fixed to string interpolation: URL(baseUrl + /options/chain/ticker/).
+
+### Changes
+- Added side=put query param to MarketData API request
+- Improved error handling: distinct messages for 401/403 (auth), 400 (bad request), 404+no_data (invalid expiration), 404 generic, s=error, s=no_data on 200
+
+### Validation
+- Smoke test PASS: SMH 2026-06-05 — 131 puts, all with delta, all Greeks present
+- npm run test: 49/49 pass
+- npm run build: clean

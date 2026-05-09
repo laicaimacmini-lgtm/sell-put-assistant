@@ -249,8 +249,9 @@ function extractMarketDataOptions(data) {
 async function fetchMarketDataOptionsChain({ ticker, expiration }) {
   const token = requireEnv('MARKETDATA_TOKEN', 'marketdata');
   const baseUrl = process.env.MARKETDATA_BASE_URL || 'https://api.marketdata.app/v1';
-  const url = new URL(`/options/chain/${ticker}/`, baseUrl);
+  const url = new URL(`${baseUrl.replace(/\/$/, '')}/options/chain/${ticker}/`);
   url.searchParams.set('expiration', expiration);
+  url.searchParams.set('side', 'put');
 
   const response = await fetch(url, {
     headers: {
@@ -258,13 +259,46 @@ async function fetchMarketDataOptionsChain({ ticker, expiration }) {
       Accept: 'application/json',
     },
   });
-  if (response.status === 401 || response.status === 403) throw new OptionsProviderError('MarketData.app authentication failed', response.status);
-  if (!response.ok) throw new OptionsProviderError(`MarketData.app request failed with HTTP ${response.status}`, response.status);
+
+  if (response.status === 401 || response.status === 403) {
+    throw new OptionsProviderError('MarketData.app authentication failed or plan does not allow this endpoint', response.status);
+  }
+
+  if (response.status === 400) {
+    const errData = await parseJsonResponse(response, 'MarketData.app').catch(() => ({}));
+    throw new OptionsProviderError(`MarketData.app request rejected. Check ticker and expiration. ${errData?.errmsg || ''}`.trim(), 400);
+  }
+
+  if (response.status === 404) {
+    const errData = await parseJsonResponse(response, 'MarketData.app').catch(() => ({}));
+    if (errData?.s === 'no_data') {
+      throw new OptionsProviderError(
+        `No options data for expiration ${expiration} on MarketData.app. The date may not be a valid expiration for ${ticker}. Try a Friday or monthly expiry date.`,
+        404,
+      );
+    }
+    throw new OptionsProviderError(`MarketData.app returned 404 for ${ticker} ${expiration}`, 404);
+  }
+
+  if (!response.ok) {
+    throw new OptionsProviderError(`MarketData.app request failed with HTTP ${response.status}`, response.status);
+  }
 
   const data = await parseJsonResponse(response, 'MarketData.app');
-  if (data?.s === 'error') throw new OptionsProviderError(`MarketData.app rejected the request: ${data.errmsg || 'unknown error'}`, 400);
+  if (data?.s === 'error') {
+    throw new OptionsProviderError(`MarketData.app rejected the request: ${data.errmsg || 'unknown error'}`, 400);
+  }
+  if (data?.s === 'no_data') {
+    throw new OptionsProviderError(
+      `No puts returned for ${ticker} ${expiration} on MarketData.app. Check whether expiration is valid for this ticker.`,
+      404,
+    );
+  }
 
-  const puts = ensurePuts(extractMarketDataOptions(data).filter(isPutOption).map((option) => mapMarketDataPut(option, { expiration })), 'MarketData.app');
+  const puts = ensurePuts(
+    extractMarketDataOptions(data).filter(isPutOption).map((option) => mapMarketDataPut(option, { expiration })),
+    'MarketData.app',
+  );
   return { ticker, expiration, source: 'marketdata', lastUpdated: new Date().toISOString(), puts };
 }
 

@@ -124,3 +124,31 @@ Provider order (updated):
 3. marketdata - dedicated market data, delta available
 4. tradier - brokerage account required, delta available
 5. yahoo - unofficial fallback, no token, no delta
+
+
+## MarketData.app Provider Validated (2026-05-09)
+
+MarketData.app provider fully validated end-to-end.
+
+- MARKETDATA_TOKEN loaded from /Users/laicai/.env symlink (3 vars injected via dotenvx)
+- Bug fixed: URL construction used  which dropped the  path segment; fixed to 
+- Added  query param to filter server-side
+- Improved 404/no_data/auth error handling with actionable messages
+- Smoke test PASS: SMH 2026-06-05, 131 puts, 131 with delta, all Greeks present
+- Valid SMH expirations confirmed: 2026-06-05, 2026-06-12, 2026-07-17
+- Invalid (no_data 404): 2026-05-16, 2026-05-30, 2026-06-19, 2026-06-20
+- All 49 tests pass, production build clean
+
+
+## MarketData.app Provider Validated (2026-05-09)
+
+MarketData.app provider fully validated end-to-end.
+
+- MARKETDATA_TOKEN loaded from /Users/laicai/.env symlink (3 vars injected via dotenvx)
+- Bug fixed: URL construction dropped /v1 path segment; fixed to string concat instead of new URL with absolute path
+- Added side=put query param to filter server-side
+- Improved 404/no_data/auth error handling with actionable messages
+- Smoke test PASS: SMH 2026-06-05, 131 puts, 131 with delta, all Greeks present
+- Valid SMH expirations: 2026-06-05, 2026-06-12, 2026-07-17
+- Invalid expirations (no_data): 2026-05-16, 2026-05-30, 2026-06-19, 2026-06-20
+- All 49 tests pass, production build clean
