@@ -43,7 +43,7 @@ e66218f Add strike comparison table and GitHub Actions deploy
 Current test status:
 
 ```text
-26 tests passed
+29 tests passed
 ```
 
 Live URL:
@@ -75,3 +75,13 @@ Latest real options architecture commit:
 ```text
 2934013 Add real options data proxy architecture
 ```
+
+## Options Provider Smoke Test
+
+A local CLI smoke test is available for the options provider abstraction:
+
+```bash
+npm run smoke:options
+```
+
+It validates provider response shape and sample put fields. It does not trade, recommend trades, or expose provider tokens to the frontend.

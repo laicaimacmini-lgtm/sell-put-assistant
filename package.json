@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "server": "node server/index.js",
-    "dev:full": "concurrently \"npm run server\" \"npm run dev\""
+    "dev:full": "concurrently \"npm run server\" \"npm run dev\"",
+    "smoke:options": "node scripts/smokeOptionsProvider.js"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.1.1",

@@ -124,3 +124,27 @@ ALPACA_SECRET=
 ```
 
 If `VITE_OPTIONS_API_BASE` is not set, the GitHub Pages UI shows a local proxy reminder instead of throwing an error. This project does not connect to trading APIs and does not place orders.
+
+## Options Provider Smoke Test
+
+Use the smoke test to verify that the local options provider returns a normalized option chain. This reads from the server-side provider abstraction only and never trades.
+
+Mock provider:
+
+```bash
+npm run smoke:options
+```
+
+With explicit args:
+
+```bash
+npm run smoke:options -- --ticker SMH --expiration 2026-06-19 --provider mock
+```
+
+Future Tradier check:
+
+```bash
+OPTIONS_DATA_PROVIDER=tradier TRADIER_TOKEN=xxx npm run smoke:options -- --ticker SMH --expiration 2026-06-19
+```
+
+Never write tokens into code and never commit `.env`. The smoke test validates data reads only; it does not place trades.

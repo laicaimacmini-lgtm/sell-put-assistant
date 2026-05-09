@@ -10,7 +10,7 @@ Completed:
 
 Validation:
 
-- Tests: 26 tests passed.
+- Tests: 29 tests passed.
 - Build: passed.
 - Deploy: GitHub Actions success.
 
@@ -36,7 +36,7 @@ Completed:
 
 Validation:
 
-- Tests: 26 tests passed.
+- Tests: 29 tests passed.
 - Build: passed.
 
 Commit:
@@ -54,4 +54,24 @@ Latest real options architecture commit:
 
 ```text
 2934013 Add real options data proxy architecture
+```
+
+## 2026-05-09
+
+Completed:
+
+- Added options provider smoke test CLI.
+- Added normalized options-chain validation helper.
+- Added tests for mock provider success, invalid response failure, and missing real provider token failure.
+
+Validation:
+
+- Smoke test: passed.
+- Tests: 29 tests passed.
+- Build: passed.
+
+Commit:
+
+```text
+Add options provider smoke test
 ```

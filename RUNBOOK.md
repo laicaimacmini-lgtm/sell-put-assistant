@@ -120,3 +120,25 @@ GET http://localhost:8787/api/options-chain?ticker=SMH&expiration=2026-06-19
 ```
 
 GitHub Pages will not call mac2 localhost. Without `VITE_OPTIONS_API_BASE`, the UI shows a local proxy reminder.
+
+## Options Provider Smoke Test
+
+Run the local provider smoke test before wiring or changing a real options provider:
+
+```bash
+npm run smoke:options
+```
+
+Explicit mock example:
+
+```bash
+npm run smoke:options -- --ticker SMH --expiration 2026-06-19 --provider mock
+```
+
+Future Tradier example:
+
+```bash
+OPTIONS_DATA_PROVIDER=tradier TRADIER_TOKEN=xxx npm run smoke:options -- --ticker SMH --expiration 2026-06-19
+```
+
+The smoke test checks normalized response shape, put count, mid, delta, and DTE. It only validates data reads and must never be extended to trade or place orders. Keep tokens in local `.env` or shell environment only.
