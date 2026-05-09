@@ -252,3 +252,22 @@ Added `scripts/marketDataDevService.js` for persistent background process manage
 - `npm run test`: 59/59 passed (6 new tests: 3 provider underlyingPrice, 3 frontend sync/quickfill/warning)
 - `npm run build`: clean (226.21 kB JS, 10.21 kB CSS)
 - `npm run bg:marketdata:restart`: ✓ port 8787 listening, ✓ port 5173 listening
+
+## 2026-05-09 — Live chain UX, stale warnings, auto-fetch
+
+### Added
+- Target quick fill buttons (+3%, +5%, +8%, +10%): sets Resistance/Target as % above current price (planning helper only, not a recommendation).
+- Target stale warning: shown when target is below current price.
+- Stale comparison warning: shown while comparison rows are example data (comparisonRowsSource === "example") or max strike < 70% of current price.
+- Apply prompt: after a real chain fetch, prompts user to click "Use in Comparison Table" to replace example rows.
+- "Use in Comparison Table" now REPLACES comparison rows (was already replacing, now sets source to 'live' to clear stale warning).
+- Apply success confirmation shown after rows replaced.
+- Auto-fetch: when provider=marketdata and local proxy available, auto-runs expiration + chain fetch on page load (per-ticker dedup via useRef Set).
+- Auto apply toggle (default OFF): when ON, fetch success auto-applies candidates without manual click.
+- Refresh MarketData button: re-runs full fetch flow, respects auto-apply toggle.
+- Last updated timestamp shown after each fetch.
+- 14 new tests covering all new behaviors (73 total, all passing).
+
+### Changed
+- RealOptionsPanel: added comparisonRowsSource prop, chainApplied state, autoApply state, lastUpdated state, autoLoading state, autoFetchedRef.
+- App.jsx: added comparisonRowsSource state, passes it to RealOptionsPanel and uses it for stale comparison warning.

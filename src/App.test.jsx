@@ -241,4 +241,228 @@ describe('App', () => {
     expect(screen.getByLabelText(/Support Level/i)).toHaveDisplayValue(expected);
   });
 
+
+  it('shows apply prompt when chain fetched and comparison rows are example data', async () => {
+    const user = userEvent.setup();
+    globalThis.__SELL_PUT_OPTIONS_API_BASE__ = 'http://localhost:8787';
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ticker: 'SMH', expiration: '2026-06-19', source: 'marketdata',
+        lastUpdated: new Date().toISOString(),
+        underlyingPrice: 261.5, underlyingPriceSource: 'marketdata',
+        puts: [
+          { symbol: 'SMH-M1', strike: 240, bid: 4.1, ask: 4.3, mid: 4.2, last: 4.15, delta: -0.22, iv: 0.34, openInterest: 1200, volume: 300, dte: 45 },
+        ],
+      }),
+    });
+
+    render(<App />);
+    await user.selectOptions(screen.getByLabelText(/options provider/i), 'marketdata');
+    await user.click(screen.getByRole('button', { name: /fetch put chain/i }));
+
+    expect(await screen.findByText(/Put chain fetched/i)).toBeInTheDocument();
+  });
+
+  it('hides apply prompt after Use in Comparison Table is clicked', async () => {
+    const user = userEvent.setup();
+    globalThis.__SELL_PUT_OPTIONS_API_BASE__ = 'http://localhost:8787';
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ticker: 'SMH', expiration: '2026-06-19', source: 'marketdata',
+        lastUpdated: new Date().toISOString(),
+        underlyingPrice: 261.5, underlyingPriceSource: 'marketdata',
+        puts: [
+          { symbol: 'SMH-M1', strike: 240, bid: 4.1, ask: 4.3, mid: 4.2, last: 4.15, delta: -0.22, iv: 0.34, openInterest: 1200, volume: 300, dte: 45 },
+        ],
+      }),
+    });
+
+    render(<App />);
+    await user.selectOptions(screen.getByLabelText(/options provider/i), 'marketdata');
+    await user.click(screen.getByRole('button', { name: /fetch put chain/i }));
+    await screen.findByText(/Put chain fetched/i);
+
+    await user.click(screen.getByRole('button', { name: /use in comparison table/i }));
+    expect(await screen.findByText(/Live candidates applied/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Put chain fetched/i)).not.toBeInTheDocument();
+  });
+
+  it('shows stale comparison warning when currentPrice is much higher than example strikes', async () => {
+    render(<App />);
+    // Default currentPrice=255, default strikes are 245/240/235 which are NOT < 255*0.7=178.5
+    // So default stale condition is comparisonRowsSource==="example" which is true
+    expect(screen.getByText(/Comparison rows look stale/i)).toBeInTheDocument();
+  });
+
+  it('hides stale comparison warning after Use in Comparison Table applied', async () => {
+    const user = userEvent.setup();
+    globalThis.__SELL_PUT_OPTIONS_API_BASE__ = 'http://localhost:8787';
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ticker: 'SMH', expiration: '2026-06-19', source: 'marketdata',
+        lastUpdated: new Date().toISOString(),
+        underlyingPrice: 261.5, underlyingPriceSource: 'marketdata',
+        puts: [
+          { symbol: 'SMH-M1', strike: 240, bid: 4.1, ask: 4.3, mid: 4.2, last: 4.15, delta: -0.22, iv: 0.34, openInterest: 1200, volume: 300, dte: 45 },
+        ],
+      }),
+    });
+
+    render(<App />);
+    await user.selectOptions(screen.getByLabelText(/options provider/i), 'marketdata');
+    await user.click(screen.getByRole('button', { name: /fetch put chain/i }));
+    await screen.findByText(/Put chain fetched/i);
+    await user.click(screen.getByRole('button', { name: /use in comparison table/i }));
+    await screen.findByText(/Live candidates applied/i);
+
+    expect(screen.queryByText(/Comparison rows look stale/i)).not.toBeInTheDocument();
+  });
+
+  it('shows target quick fill buttons', () => {
+    render(<App />);
+    expect(screen.getByRole('button', { name: /\+3%/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /\+5%/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /\+8%/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /\+10%/i })).toBeInTheDocument();
+  });
+
+  it('applies +5% target quick fill', async () => {
+    render(<App />);
+    const btn = screen.getByRole('button', { name: /\+5%/i });
+    await userEvent.setup().click(btn);
+    const expected = (255 * 1.05).toFixed(2);
+    expect(screen.getByLabelText(/Resistance \/ Target/i)).toHaveDisplayValue(expected);
+  });
+
+  it('shows target stale warning when target is below current price', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const targetInput = screen.getByLabelText(/Resistance \/ Target/i);
+    await user.clear(targetInput);
+    await user.type(targetInput, '200');
+    expect(screen.getByText(/Target is below current price/i)).toBeInTheDocument();
+  });
+
+  it('does not show target stale warning when target is above current price', () => {
+    render(<App />);
+    // default target=270, currentPrice=255 — 270 > 255 so no warning
+    expect(screen.queryByText(/Target is below current price/i)).not.toBeInTheDocument();
+  });
+
+  it('auto-fetches chain when provider is marketdata and apiBase is set', async () => {
+    globalThis.__SELL_PUT_OPTIONS_API_BASE__ = 'http://localhost:8787';
+    const mockFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ticker: 'SMH', expiration: '2026-06-19', source: 'marketdata',
+        lastUpdated: new Date().toISOString(),
+        underlyingPrice: 261.5, underlyingPriceSource: 'marketdata',
+        expirations: ['2026-06-19', '2026-07-17'],
+        puts: [
+          { symbol: 'SMH-M1', strike: 240, bid: 4.1, ask: 4.3, mid: 4.2, last: 4.15, delta: -0.22, iv: 0.34, openInterest: 1200, volume: 300, dte: 45 },
+        ],
+      }),
+    });
+
+    render(<App />);
+    await userEvent.setup().selectOptions(screen.getByLabelText(/options provider/i), 'marketdata');
+
+    await screen.findByText(/Updated current price from MarketData/i, {}, { timeout: 3000 });
+    expect(mockFetch).toHaveBeenCalled();
+  });
+
+  it('does not auto-fetch when apiBase is not set', async () => {
+    globalThis.__SELL_PUT_OPTIONS_API_BASE__ = undefined;
+    const mockFetch = vi.spyOn(globalThis, 'fetch');
+
+    render(<App />);
+    await userEvent.setup().selectOptions(screen.getByLabelText(/options provider/i), 'marketdata');
+
+    // wait a tick
+    await new Promise((r) => setTimeout(r, 100));
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('does not auto-fetch when provider is not marketdata', async () => {
+    globalThis.__SELL_PUT_OPTIONS_API_BASE__ = 'http://localhost:8787';
+    const mockFetch = vi.spyOn(globalThis, 'fetch');
+
+    render(<App />);
+    // default provider is mock
+    await new Promise((r) => setTimeout(r, 100));
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('shows Refresh MarketData button after chain is fetched', async () => {
+    const user = userEvent.setup();
+    globalThis.__SELL_PUT_OPTIONS_API_BASE__ = 'http://localhost:8787';
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ticker: 'SMH', expiration: '2026-06-19', source: 'marketdata',
+        lastUpdated: new Date().toISOString(),
+        underlyingPrice: 261.5, underlyingPriceSource: 'marketdata',
+        puts: [
+          { symbol: 'SMH-M1', strike: 240, bid: 4.1, ask: 4.3, mid: 4.2, last: 4.15, delta: -0.22, iv: 0.34, openInterest: 1200, volume: 300, dte: 45 },
+        ],
+      }),
+    });
+
+    render(<App />);
+    await user.selectOptions(screen.getByLabelText(/options provider/i), 'marketdata');
+    await user.click(screen.getByRole('button', { name: /fetch put chain/i }));
+    await screen.findByText(/Updated current price/i);
+
+    expect(screen.getByRole('button', { name: /Refresh MarketData/i })).toBeInTheDocument();
+  });
+
+  it('shows auto apply toggle in success state', async () => {
+    const user = userEvent.setup();
+    globalThis.__SELL_PUT_OPTIONS_API_BASE__ = 'http://localhost:8787';
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ticker: 'SMH', expiration: '2026-06-19', source: 'marketdata',
+        lastUpdated: new Date().toISOString(),
+        underlyingPrice: 261.5, underlyingPriceSource: 'marketdata',
+        puts: [
+          { symbol: 'SMH-M1', strike: 240, bid: 4.1, ask: 4.3, mid: 4.2, last: 4.15, delta: -0.22, iv: 0.34, openInterest: 1200, volume: 300, dte: 45 },
+        ],
+      }),
+    });
+
+    render(<App />);
+    await user.selectOptions(screen.getByLabelText(/options provider/i), 'marketdata');
+    await user.click(screen.getByRole('button', { name: /fetch put chain/i }));
+    await screen.findByText(/Updated current price/i);
+
+    expect(screen.getByLabelText(/Auto apply comparison rows/i)).toBeInTheDocument();
+  });
+
+  it('shows last updated time after fetch', async () => {
+    const user = userEvent.setup();
+    globalThis.__SELL_PUT_OPTIONS_API_BASE__ = 'http://localhost:8787';
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ticker: 'SMH', expiration: '2026-06-19', source: 'marketdata',
+        lastUpdated: new Date().toISOString(),
+        underlyingPrice: 261.5, underlyingPriceSource: 'marketdata',
+        puts: [
+          { symbol: 'SMH-M1', strike: 240, bid: 4.1, ask: 4.3, mid: 4.2, last: 4.15, delta: -0.22, iv: 0.34, openInterest: 1200, volume: 300, dte: 45 },
+        ],
+      }),
+    });
+
+    render(<App />);
+    await user.selectOptions(screen.getByLabelText(/options provider/i), 'marketdata');
+    await user.click(screen.getByRole('button', { name: /fetch put chain/i }));
+    await screen.findByText(/Updated current price/i);
+
+    expect(screen.getByText(/Last updated:/i)).toBeInTheDocument();
+  });
+
 });

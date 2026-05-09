@@ -216,6 +216,7 @@ function StrikeComparison({ form, rows, sortBy, onSortChange, onRowChange, onAdd
 export default function App() {
   const [form, setForm] = useState(initialForm);
   const [comparisonRows, setComparisonRows] = useState(defaultStrikeRows);
+  const [comparisonRowsSource, setComparisonRowsSource] = useState("example");
   const [sortBy, setSortBy] = useState('rewardRisk');
   const data = useMemo(() => calculateSetup(form), [form]);
 
@@ -259,11 +260,13 @@ export default function App() {
   function resetComparisonRows() {
     setComparisonRows(defaultStrikeRows);
     setSortBy('rewardRisk');
+    setComparisonRowsSource("example");
   }
 
   function useRealOptionsRows(rows) {
     setComparisonRows(rows);
     setSortBy('rewardRisk');
+    setComparisonRowsSource("live");
   }
 
   function handleChainFetched({ underlyingPrice }) {
@@ -274,6 +277,11 @@ export default function App() {
 
   const supportStale = Number.isFinite(Number(form.currentPrice)) && Number.isFinite(Number(form.support))
     && (Number(form.support) < Number(form.currentPrice) * 0.7 || Number(form.support) > Number(form.currentPrice));
+  const targetStale = Number.isFinite(Number(form.target)) && Number.isFinite(Number(form.currentPrice)) && Number(form.target) < Number(form.currentPrice);
+  const comparisonStale = comparisonRowsSource === "example" || (
+    comparisonRows.length > 0 &&
+    Math.max(...comparisonRows.map((r) => Number(r.strike))) < Number(form.currentPrice) * 0.7
+  );
 
   return (
     <main className="app-shell">
@@ -337,6 +345,23 @@ export default function App() {
               </div>
             )}
             <Field label="Resistance / Target" name="target" value={form.target} onChange={updateField} />
+            <div className="quick-fill-row">
+              {[0.03, 0.05, 0.08, 0.10].map((pct) => {
+                const quick = (Number(form.currentPrice) * (1 + pct)).toFixed(2);
+                return (
+                  <button key={pct} type="button" className="quick-fill-btn quick-fill-btn--up"
+                    title={`Target at +${(pct * 100).toFixed(0)}% of current price. Planning helper only.`}
+                    onClick={() => setForm((c) => ({ ...c, target: Number(quick) }))}>
+                    +{(pct * 100).toFixed(0)}%
+                  </button>
+                );
+              })}
+            </div>
+            {targetStale && (
+              <div className="target-stale-warning">
+                Target is below current price. Check whether this value belongs to an old example.
+              </div>
+            )}
             <Field label="Account Cash Available" name="cash" value={form.cash} onChange={updateField} step="100" />
             <Field label="Contract Count" name="contracts" value={form.contracts} onChange={updateField} step="1" />
             <label className="field">
@@ -386,8 +411,13 @@ export default function App() {
         </section>
       </div>
 
-      <RealOptionsPanel form={form} onUseComparisonRows={useRealOptionsRows} onChainFetched={handleChainFetched} />
+      <RealOptionsPanel form={form} onUseComparisonRows={useRealOptionsRows} onChainFetched={handleChainFetched} comparisonRowsSource={comparisonRowsSource} />
 
+      {comparisonStale && (
+        <div className="comparison-stale-warning">
+          Comparison rows look stale — they may be example data not reflecting the current price. Use &ldquo;Use in Comparison Table&rdquo; after fetching live data, or update strikes manually.
+        </div>
+      )}
       <StrikeComparison
         form={form}
         rows={comparisonRows}

@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { CalendarDays, Cloud, Database, Loader2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { CalendarDays, Cloud, Database, Loader2, RefreshCw } from 'lucide-react';
 import {
   fetchOptionsChain,
   fetchOptionsExpirations,
@@ -27,7 +27,7 @@ function defaultExpiration() {
   return date.toISOString().slice(0, 10);
 }
 
-export default function RealOptionsPanel({ form, onUseComparisonRows, onChainFetched }) {
+export default function RealOptionsPanel({ form, onUseComparisonRows, onChainFetched, comparisonRowsSource }) {
   const [ticker, setTicker] = useState(form.ticker || 'SMH');
   const [expiration, setExpiration] = useState(defaultExpiration());
   const [provider, setProvider] = useState('mock');
@@ -37,6 +37,11 @@ export default function RealOptionsPanel({ form, onUseComparisonRows, onChainFet
   const [loading, setLoading] = useState(false);
   const [priceSyncMsg, setPriceSyncMsg] = useState('');
   const [expirationLoading, setExpirationLoading] = useState(false);
+  const [autoApply, setAutoApply] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState('');
+  const [autoLoading, setAutoLoading] = useState(false);
+  const [chainApplied, setChainApplied] = useState(false);
+  const autoFetchedRef = useRef(new Set());
   const apiBase = getOptionsApiBase();
 
   const selectedRows = useMemo(
@@ -44,6 +49,63 @@ export default function RealOptionsPanel({ form, onUseComparisonRows, onChainFet
     [chain, form.support, form.currentPrice],
   );
   const deltaUnavailable = hasUnavailableDelta(chain?.puts || []);
+
+  async function runFetchFlow({ currentTicker, currentExpiration, currentProvider, isRefresh = false }) {
+    setError('');
+    setChain(null);
+    setPriceSyncMsg('');
+    if (!isRefresh) setChainApplied(false);
+
+    try {
+      const expirationPayload = await fetchOptionsExpirations({ ticker: currentTicker, provider: currentProvider });
+      const list = expirationPayload.expirations || [];
+      setExpirations(list);
+      const picked = pickExpiration(list);
+      let exp = currentExpiration;
+      if (picked) { setExpiration(picked); exp = picked; }
+
+      const payload = await fetchOptionsChain({ ticker: currentTicker, expiration: exp, provider: currentProvider });
+      setChain(payload);
+      setLastUpdated(new Date().toLocaleTimeString());
+
+      if (onChainFetched) {
+        onChainFetched({ puts: payload.puts, underlyingPrice: payload.underlyingPrice ?? null, underlyingPriceSource: payload.underlyingPriceSource ?? null });
+      }
+      if (payload.underlyingPrice != null && payload.underlyingPriceSource === 'marketdata') {
+        setPriceSyncMsg(`Updated current price from MarketData.app: $${Number(payload.underlyingPrice).toFixed(2)}`);
+      } else if (payload.underlyingPrice != null && payload.underlyingPriceSource === 'estimated') {
+        setPriceSyncMsg(`Estimated underlying price: $${Number(payload.underlyingPrice).toFixed(2)}`);
+      } else {
+        setPriceSyncMsg('Underlying price unavailable — current price not updated.');
+      }
+
+      return payload;
+    } catch (fetchError) {
+      setError(fetchError.message);
+      return null;
+    }
+  }
+
+  useEffect(() => {
+    if (provider !== 'marketdata' || !apiBase) return;
+    const key = `${ticker}|${provider}`;
+    if (autoFetchedRef.current.has(key)) return;
+    autoFetchedRef.current.add(key);
+
+    (async () => {
+      setAutoLoading(true);
+      const payload = await runFetchFlow({ currentTicker: ticker, currentExpiration: expiration, currentProvider: provider });
+      if (payload && autoApply) {
+        const rows = selectPutsForComparison(payload.puts || [], form.support, 5, form.currentPrice);
+        if (rows.length > 0) {
+          onUseComparisonRows(rows);
+          setChainApplied(true);
+        }
+      }
+      setAutoLoading(false);
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ticker, provider, apiBase]);
 
   async function handleFetchExpirations() {
     setExpirationLoading(true);
@@ -70,6 +132,8 @@ export default function RealOptionsPanel({ form, onUseComparisonRows, onChainFet
     try {
       const payload = await fetchOptionsChain({ ticker, expiration, provider });
       setChain(payload);
+      setLastUpdated(new Date().toLocaleTimeString());
+      setChainApplied(false);
       if (onChainFetched) {
         onChainFetched({ puts: payload.puts, underlyingPrice: payload.underlyingPrice ?? null, underlyingPriceSource: payload.underlyingPriceSource ?? null });
       }
@@ -87,9 +151,28 @@ export default function RealOptionsPanel({ form, onUseComparisonRows, onChainFet
     }
   }
 
-  function handleUseRows() {
-    if (selectedRows.length > 0) onUseComparisonRows(selectedRows);
+  async function handleRefresh() {
+    setLoading(true);
+    const payload = await runFetchFlow({ currentTicker: ticker, currentExpiration: expiration, currentProvider: provider, isRefresh: true });
+    if (payload && autoApply) {
+      const rows = selectPutsForComparison(payload.puts || [], form.support, 5, form.currentPrice);
+      if (rows.length > 0) {
+        onUseComparisonRows(rows);
+        setChainApplied(true);
+      }
+    }
+    setLoading(false);
   }
+
+  function handleUseRows() {
+    if (selectedRows.length > 0) {
+      onUseComparisonRows(selectedRows);
+      setChainApplied(true);
+    }
+  }
+
+  const showApplyPrompt = chain && !chainApplied && comparisonRowsSource === 'example' && selectedRows.length > 0;
+  const showApplySuccess = chain && chainApplied && selectedRows.length > 0;
 
   return (
     <section className="panel real-options-panel">
@@ -144,21 +227,60 @@ export default function RealOptionsPanel({ form, onUseComparisonRows, onChainFet
           {loading ? <Loader2 size={16} className="spin" /> : <Database size={16} />}
           Fetch Put Chain
         </button>
+        {chain && (
+          <button type="button" className="fetch-button secondary" onClick={handleRefresh} disabled={loading || autoLoading || !apiBase} aria-label="Refresh MarketData">
+            {loading || autoLoading ? <Loader2 size={16} className="spin" /> : <RefreshCw size={16} />}
+            Refresh MarketData
+          </button>
+        )}
       </div>
+
+      {(loading || autoLoading) && !chain && (
+        <div className="provider-note">Auto-fetching options data…</div>
+      )}
 
       {error && <div className="error-state">{error}</div>}
       {priceSyncMsg && <div className="price-sync-msg">{priceSyncMsg}</div>}
       {expirations.length > 0 && <div className="provider-note">{expirations.length} expirations available from {provider}.</div>}
+      {lastUpdated && <div className="last-updated">Last updated: {lastUpdated}</div>}
+
       {chain && (
         <div className="success-state">
           <div>
             <strong>{chain.puts.length} puts fetched</strong>
-            <span>{selectedRows.length} candidates match the delta/DTE filters, or the OTM fallback when delta is unavailable.</span>
+            {selectedRows.length > 0 ? (
+              <span>{selectedRows.length} candidates match the delta/DTE filters.</span>
+            ) : (
+              <span className="apply-note">No suitable candidates found for current filters.</span>
+            )}
             {deltaUnavailable && <span>Delta unavailable for this provider. Comparison rows use an OTM/strike-based fallback.</span>}
           </div>
-          <button type="button" className="fetch-button secondary" onClick={handleUseRows} disabled={selectedRows.length === 0}>
-            Use in Comparison Table
-          </button>
+
+          {showApplyPrompt && (
+            <div className="apply-prompt">
+              Put chain fetched. Click &ldquo;Use in Comparison Table&rdquo; to replace the example rows with live candidates.
+            </div>
+          )}
+          {showApplySuccess && (
+            <div className="apply-success">
+              Live candidates applied to comparison table.
+            </div>
+          )}
+
+          <div className="success-actions">
+            <button type="button" className="fetch-button secondary" onClick={handleUseRows} disabled={selectedRows.length === 0}>
+              Use in Comparison Table
+            </button>
+            <label className="auto-apply-toggle">
+              <input
+                type="checkbox"
+                checked={autoApply}
+                onChange={(e) => setAutoApply(e.target.checked)}
+                aria-label="Auto apply comparison rows"
+              />
+              Auto apply on fetch
+            </label>
+          </div>
         </div>
       )}
     </section>
