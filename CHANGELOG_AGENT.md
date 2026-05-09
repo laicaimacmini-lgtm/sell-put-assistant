@@ -10,7 +10,7 @@ Completed:
 
 Validation:
 
-- Tests: 34 tests passed.
+- Tests: 40 tests passed.
 - Build: passed.
 - Deploy: GitHub Actions success.
 
@@ -36,7 +36,7 @@ Completed:
 
 Validation:
 
-- Tests: 34 tests passed.
+- Tests: 40 tests passed.
 - Build: passed.
 
 Commit:
@@ -67,7 +67,7 @@ Completed:
 Validation:
 
 - Smoke test: passed.
-- Tests: 34 tests passed.
+- Tests: 40 tests passed.
 - Build: passed.
 
 Commit:
@@ -89,7 +89,7 @@ Validation:
 
 - Mock smoke test: passed.
 - Tradier missing-token smoke: clear failure.
-- Tests: 34 tests passed.
+- Tests: 40 tests passed.
 - Build: passed.
 
 Commit:
@@ -102,3 +102,30 @@ Notes:
 
 - No token is committed.
 - No Tradier trading/order endpoint is connected.
+
+## 2026-05-09
+
+Completed:
+
+- Added Alpha Vantage options data provider behind the local proxy.
+- Added MarketData.app options data provider behind the local proxy.
+- Kept Tradier provider but marked it optional / brokerage-account required in docs and UI.
+- Added provider dropdown and provider descriptions in Real Options Data panel.
+
+Validation:
+
+- Mock smoke test: passed.
+- Missing-token smoke checks: clear failures for Alpha Vantage, MarketData.app, and Tradier.
+- Tests: 40 tests passed.
+- Build: passed.
+
+Commit:
+
+```text
+Add alternative options data providers
+```
+
+Notes:
+
+- No real tokens are committed.
+- No trading/order endpoint is connected.

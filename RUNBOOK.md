@@ -167,3 +167,22 @@ Run full local UI + proxy:
 ```bash
 VITE_OPTIONS_API_BASE=http://localhost:8787 npm run dev:full
 ```
+
+## Alternative Options Providers
+
+Provider priority now favors lower-friction data access before Tradier:
+
+1. `mock`: default and safe for development.
+2. `alphavantage`: personal API key fallback.
+3. `marketdata`: dedicated options market data API.
+4. `tradier`: optional and requires Tradier Brokerage/API access; not preferred because it may require brokerage KYC.
+
+Smoke tests for missing-token behavior:
+
+```bash
+npm run smoke:options -- --provider alphavantage --ticker SMH --expiration 2026-06-19
+npm run smoke:options -- --provider marketdata --ticker SMH --expiration 2026-06-19
+npm run smoke:options -- --provider tradier --ticker SMH --expiration 2026-06-19
+```
+
+With real local tokens, put credentials in `.env` and do not commit them. The smoke test validates data reads only; it must not trade or place orders.

@@ -20,6 +20,7 @@ app.get('/api/options-chain', async (req, res) => {
     const result = await fetchOptionsChain({
       ticker: req.query.ticker,
       expiration: req.query.expiration,
+      provider: req.query.provider,
     });
     res.json(result);
   } catch (error) {

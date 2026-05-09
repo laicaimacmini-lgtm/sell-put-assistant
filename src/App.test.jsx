@@ -86,6 +86,21 @@ describe('App', () => {
     render(<App />);
     expect(screen.getByRole('heading', { name: /real options data/i })).toBeInTheDocument();
     expect(screen.getByText(/requires the local api proxy/i)).toBeInTheDocument();
+    expect(screen.getByText(/Mock: built-in sample data/i)).toBeInTheDocument();
+  });
+
+  it('shows provider descriptions when the provider dropdown changes', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.selectOptions(screen.getByLabelText(/options provider/i), 'alphavantage');
+    expect(screen.getByText(/Alpha Vantage: lower-friction API key option/i)).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText(/options provider/i), 'marketdata');
+    expect(screen.getByText(/MarketData.app: dedicated options market data API/i)).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText(/options provider/i), 'tradier');
+    expect(screen.getByText(/requires Tradier Brokerage\/API access/i)).toBeInTheDocument();
   });
 
   it('fetches mock options data and uses filtered puts in the comparison table', async () => {
@@ -109,6 +124,7 @@ describe('App', () => {
 
     render(<App />);
     await user.click(screen.getByRole('button', { name: /fetch put chain/i }));
+    expect(fetch).toHaveBeenCalledWith(expect.objectContaining({ href: expect.stringContaining('provider=mock') }));
     expect(await screen.findByText(/4 puts fetched/i)).toBeInTheDocument();
     expect(screen.getByText(/3 candidates match/i)).toBeInTheDocument();
 

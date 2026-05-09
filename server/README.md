@@ -85,3 +85,14 @@ VITE_OPTIONS_API_BASE=http://localhost:8787 npm run dev:full
 ```
 
 If the smoke test returns no puts, check whether the expiration is valid for the ticker. Tradier tokens must never be committed or placed in frontend code.
+
+## Provider Priority
+
+Default provider priority for this personal project:
+
+1. `mock`: built-in sample data and default safe mode.
+2. `alphavantage`: lower-friction personal API key option.
+3. `marketdata`: dedicated options market data provider.
+4. `tradier`: optional; requires Tradier Brokerage/API access and may require brokerage KYC.
+
+Tradier remains supported for market/options chain reads only, but it is no longer the preferred first real-data provider for this project. No trading/order endpoints are connected.

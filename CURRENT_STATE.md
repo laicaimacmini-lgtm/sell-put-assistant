@@ -43,7 +43,7 @@ e66218f Add strike comparison table and GitHub Actions deploy
 Current test status:
 
 ```text
-34 tests passed
+40 tests passed
 ```
 
 Live URL:
@@ -95,3 +95,14 @@ GET /markets/options/chains
 ```
 
 It requires local `TRADIER_TOKEN` and supports optional `TRADIER_BASE_URL`. Missing tokens, auth failures, rejected requests, unexpected formats, and empty put chains return clear errors. No trading or order endpoint is connected.
+
+## Provider Priority Update
+
+Tradier is retained but downgraded to optional because it can require Tradier Brokerage/API access and brokerage KYC. The preferred order for real-data exploration is now:
+
+1. `mock` as the default safe provider.
+2. `alphavantage` as a lower-friction personal API key option.
+3. `marketdata` as a dedicated market data provider.
+4. `tradier` as optional brokerage-account-backed access.
+
+Alpha Vantage and MarketData.app providers are implemented defensively behind the local proxy. No token is committed and no frontend code receives provider credentials.

@@ -175,3 +175,31 @@ VITE_OPTIONS_API_BASE=http://localhost:8787 npm run dev:full
 ```
 
 GitHub Pages does not store provider tokens. Real options data is only available through the local proxy or a future secure backend. This remains an education and personal workflow tool, not financial advice.
+
+## Options Data Provider Priority
+
+Real options data remains local-proxy only. Provider priority is:
+
+1. `mock`: default built-in sample data.
+2. `alphavantage`: lower-friction personal API key option.
+3. `marketdata`: dedicated options market data API.
+4. `tradier`: optional; requires Tradier Brokerage/API access and may require brokerage KYC.
+
+Local `.env` examples:
+
+```bash
+OPTIONS_DATA_PROVIDER=alphavantage
+ALPHAVANTAGE_API_KEY=your_key_here
+```
+
+```bash
+OPTIONS_DATA_PROVIDER=marketdata
+MARKETDATA_TOKEN=your_token_here
+```
+
+```bash
+OPTIONS_DATA_PROVIDER=tradier
+TRADIER_TOKEN=your_token_here
+```
+
+Tokens must stay in local `.env` or shell environment only. GitHub Pages does not store tokens and does not directly call real options APIs.

@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fetchOptionsChain, mapTradierPut } from './optionsProvider.js';
+import {
+  fetchOptionsChain,
+  mapAlphaVantagePut,
+  mapMarketDataPut,
+  mapTradierPut,
+} from './optionsProvider.js';
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -7,7 +12,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function mockTradierResponse(body, status = 200) {
+function mockProviderResponse(body, status = 200) {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
     ok: status >= 200 && status < 300,
     status,
@@ -21,6 +26,11 @@ describe('optionsProvider', () => {
     vi.stubEnv('TRADIER_TOKEN', '');
 
     await expect(fetchOptionsChain({ ticker: 'SMH', expiration: '2026-06-19' })).rejects.toThrow(/Missing TRADIER_TOKEN for Tradier provider/i);
+  });
+
+  it('returns clear errors when Alpha Vantage and MarketData tokens are missing', async () => {
+    await expect(fetchOptionsChain({ ticker: 'SMH', expiration: '2026-06-19', provider: 'alphavantage' })).rejects.toThrow(/Missing ALPHAVANTAGE_API_KEY/i);
+    await expect(fetchOptionsChain({ ticker: 'SMH', expiration: '2026-06-19', provider: 'marketdata' })).rejects.toThrow(/Missing MARKETDATA_TOKEN/i);
   });
 
   it('returns mock puts by default', async () => {
@@ -74,29 +84,11 @@ describe('optionsProvider', () => {
   it('fetches Tradier chains, filters calls, and maps array responses', async () => {
     vi.stubEnv('TRADIER_TOKEN', 'test-token');
     vi.stubEnv('TRADIER_BASE_URL', 'https://sandbox.tradier.test/v1');
-    mockTradierResponse({
+    mockProviderResponse({
       options: {
         option: [
-          {
-            symbol: 'SMH260619P00240000',
-            option_type: 'put',
-            strike: 240,
-            bid: 4.1,
-            ask: 4.3,
-            last: 4.15,
-            greeks: { delta: -0.22, mid_iv: 0.34 },
-            open_interest: 1200,
-            volume: 300,
-            days_to_expiration: 45,
-          },
-          {
-            symbol: 'SMH260619C00240000',
-            option_type: 'call',
-            strike: 240,
-            bid: 8.1,
-            ask: 8.4,
-            greeks: { delta: 0.5 },
-          },
+          { symbol: 'SMH260619P00240000', option_type: 'put', strike: 240, bid: 4.1, ask: 4.3, last: 4.15, greeks: { delta: -0.22, mid_iv: 0.34 }, open_interest: 1200, volume: 300, days_to_expiration: 45 },
+          { symbol: 'SMH260619C00240000', option_type: 'call', strike: 240, bid: 8.1, ask: 8.4, greeks: { delta: 0.5 } },
         ],
       },
     });
@@ -105,12 +97,7 @@ describe('optionsProvider', () => {
 
     expect(fetch).toHaveBeenCalledWith(
       expect.objectContaining({ href: expect.stringContaining('/markets/options/chains?symbol=SMH&expiration=2026-06-19&greeks=true') }),
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          Authorization: 'Bearer test-token',
-          Accept: 'application/json',
-        }),
-      }),
+      expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token', Accept: 'application/json' }) }),
     );
     expect(result.source).toBe('tradier');
     expect(result.puts).toHaveLength(1);
@@ -119,57 +106,89 @@ describe('optionsProvider', () => {
 
   it('maps a single Tradier option object response', async () => {
     vi.stubEnv('TRADIER_TOKEN', 'test-token');
-    mockTradierResponse({
+    mockProviderResponse({
       options: {
-        option: {
-          symbol: 'MU260619P00115000',
-          option_type: 'put',
-          strike: '115',
-          bid: '2.35',
-          ask: '2.55',
-          last: '2.45',
-          greeks: { delta: '-0.22', smv_vol: '0.43' },
-          open_interest: '1120',
-          volume: '420',
-          days_to_expiration: '38',
-        },
+        option: { symbol: 'MU260619P00115000', option_type: 'put', strike: '115', bid: '2.35', ask: '2.55', last: '2.45', greeks: { delta: '-0.22', smv_vol: '0.43' }, open_interest: '1120', volume: '420', days_to_expiration: '38' },
       },
     });
 
     const result = await fetchOptionsChain({ ticker: 'MU', expiration: '2026-06-19', provider: 'tradier' });
 
     expect(result.puts).toHaveLength(1);
-    expect(result.puts[0]).toEqual(expect.objectContaining({
-      symbol: 'MU260619P00115000',
-      strike: 115,
-      bid: 2.35,
-      ask: 2.55,
-      mid: 2.45,
-      delta: -0.22,
-      iv: 0.43,
-      openInterest: 1120,
-      volume: 420,
-      dte: 38,
-    }));
+    expect(result.puts[0]).toEqual(expect.objectContaining({ strike: 115, bid: 2.35, ask: 2.55, mid: 2.45, delta: -0.22, iv: 0.43, openInterest: 1120, volume: 420, dte: 38 }));
+  });
+
+  it('maps Alpha Vantage defensive format and filters calls', async () => {
+    vi.stubEnv('ALPHAVANTAGE_API_KEY', 'av-key');
+    vi.stubEnv('ALPHAVANTAGE_BASE_URL', 'https://alpha.test/query');
+    mockProviderResponse({
+      data: [
+        { contractID: 'SMH260619P00240000', type: 'put', strike: '240', bid: '4.10', ask: '4.30', last: '4.15', delta: '-0.22', implied_volatility: '0.34', open_interest: '1200', volume: '300', expiration: '2026-06-19' },
+        { contractID: 'SMH260619C00240000', type: 'call', strike: '240', bid: '8.10', ask: '8.30', delta: '0.50' },
+      ],
+    });
+
+    const result = await fetchOptionsChain({ ticker: 'SMH', expiration: '2026-06-19', provider: 'alphavantage' });
+
+    expect(fetch).toHaveBeenCalledWith(expect.objectContaining({ href: expect.stringContaining('function=HISTORICAL_OPTIONS') }), expect.any(Object));
+    expect(result.source).toBe('alphavantage');
+    expect(result.puts).toHaveLength(1);
+    expect(result.puts[0]).toEqual(expect.objectContaining({ symbol: 'SMH260619P00240000', strike: 240, mid: 4.2, delta: -0.22, iv: 0.34, openInterest: 1200, volume: 300 }));
+  });
+
+  it('maps Alpha Vantage put helper format', () => {
+    expect(mapAlphaVantagePut({ symbol: 'X', option_type: 'put', strike: '100', bid_price: '1.00', ask_price: '1.20', last_price: '1.10', greeks: { delta: '-0.2', iv: '0.4' }, openInterest: '12', volume: '3', dte: '45' })).toEqual(expect.objectContaining({ symbol: 'X', strike: 100, mid: 1.1, delta: -0.2, iv: 0.4, openInterest: 12, volume: 3, dte: 45 }));
+  });
+
+  it('maps MarketData.app defensive format from array columns', async () => {
+    vi.stubEnv('MARKETDATA_TOKEN', 'md-key');
+    vi.stubEnv('MARKETDATA_BASE_URL', 'https://marketdata.test/v1');
+    mockProviderResponse({
+      optionSymbol: ['SMH260619P00240000', 'SMH260619C00240000'],
+      side: ['put', 'call'],
+      strike: [240, 240],
+      bid: [4.1, 8.1],
+      ask: [4.3, 8.3],
+      last: [4.15, 8.2],
+      delta: [-0.22, 0.5],
+      iv: [0.34, 0.3],
+      openInterest: [1200, 100],
+      volume: [300, 10],
+      dte: [45, 45],
+    });
+
+    const result = await fetchOptionsChain({ ticker: 'SMH', expiration: '2026-06-19', provider: 'marketdata' });
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.objectContaining({ href: expect.stringContaining('/options/chain/SMH/?expiration=2026-06-19') }),
+      expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer md-key', Accept: 'application/json' }) }),
+    );
+    expect(result.source).toBe('marketdata');
+    expect(result.puts).toHaveLength(1);
+    expect(result.puts[0]).toEqual(expect.objectContaining({ symbol: 'SMH260619P00240000', strike: 240, mid: 4.2, delta: -0.22, iv: 0.34, openInterest: 1200, volume: 300, dte: 45 }));
+  });
+
+  it('maps MarketData.app object helper format', () => {
+    expect(mapMarketDataPut({ optionSymbol: 'X', side: 'put', strike: '100', bidPrice: '1.00', askPrice: '1.20', lastPrice: '1.10', delta: '-0.2', impliedVolatility: '0.4', oi: '12', volume: '3', dte: '45' })).toEqual(expect.objectContaining({ symbol: 'X', strike: 100, mid: 1.1, delta: -0.2, iv: 0.4, openInterest: 12, volume: 3, dte: 45 }));
   });
 
   it('returns a clear Tradier authentication error for 401', async () => {
     vi.stubEnv('TRADIER_TOKEN', 'bad-token');
-    mockTradierResponse({ error: 'Unauthorized' }, 401);
+    mockProviderResponse({ error: 'Unauthorized' }, 401);
 
     await expect(fetchOptionsChain({ ticker: 'SMH', expiration: '2026-06-19', provider: 'tradier' })).rejects.toThrow(/Tradier authentication failed/i);
   });
 
   it('returns a clear Tradier rejected request error for 400', async () => {
     vi.stubEnv('TRADIER_TOKEN', 'test-token');
-    mockTradierResponse({ error: 'Bad request' }, 400);
+    mockProviderResponse({ error: 'Bad request' }, 400);
 
     await expect(fetchOptionsChain({ ticker: 'BAD', expiration: '2026-06-19', provider: 'tradier' })).rejects.toThrow(/Check ticker and expiration/i);
   });
 
   it('prompts for expiration checks when Tradier returns no puts', async () => {
     vi.stubEnv('TRADIER_TOKEN', 'test-token');
-    mockTradierResponse({ options: { option: [] } });
+    mockProviderResponse({ options: { option: [] } });
 
     await expect(fetchOptionsChain({ ticker: 'SMH', expiration: '2026-06-19', provider: 'tradier' })).rejects.toThrow(/No puts returned. Check whether expiration is valid/i);
   });

@@ -47,3 +47,16 @@ Reasons:
 - This keeps the project as a decision-support workflow tool, not a trading integration.
 
 The first implementation uses mock data by default and reserves Tradier, MarketData.app, and Alpaca for future provider work.
+
+## Prefer Lower-Friction Market Data Providers Before Tradier
+
+Tradier remains implemented, but it is no longer the preferred first real-data provider because real-time stock/options access is tied to Tradier Brokerage/API access and may require brokerage KYC fields such as address, tax ID, and date of birth.
+
+For this personal risk/reward workflow tool, the preferred exploration order is now:
+
+1. Mock data for safe local development.
+2. Alpha Vantage for lower-friction personal API key experiments.
+3. MarketData.app for dedicated market data.
+4. Tradier only when the user already has appropriate Brokerage/API access.
+
+This keeps the project focused on market/options data reads only and avoids turning it into a brokerage integration.

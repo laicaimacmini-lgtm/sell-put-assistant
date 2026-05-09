@@ -2,6 +2,13 @@ import { useMemo, useState } from 'react';
 import { Cloud, Database, Loader2 } from 'lucide-react';
 import { fetchOptionsChain, getOptionsApiBase, selectPutsForComparison } from '../lib/optionsChain';
 
+const providerDescriptions = {
+  mock: 'Mock: built-in sample data',
+  alphavantage: 'Alpha Vantage: lower-friction API key option',
+  marketdata: 'MarketData.app: dedicated options market data API',
+  tradier: 'Tradier: requires Tradier Brokerage/API access',
+};
+
 function Badge({ tone, children }) {
   return <span className={`badge ${tone}`}>{children}</span>;
 }
@@ -15,6 +22,7 @@ function defaultExpiration() {
 export default function RealOptionsPanel({ form, onUseComparisonRows }) {
   const [ticker, setTicker] = useState(form.ticker || 'SMH');
   const [expiration, setExpiration] = useState(defaultExpiration());
+  const [provider, setProvider] = useState('mock');
   const [chain, setChain] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -30,7 +38,7 @@ export default function RealOptionsPanel({ form, onUseComparisonRows }) {
     setError('');
     setChain(null);
     try {
-      const payload = await fetchOptionsChain({ ticker, expiration });
+      const payload = await fetchOptionsChain({ ticker, expiration, provider });
       setChain(payload);
     } catch (fetchError) {
       setError(fetchError.message);
@@ -61,6 +69,8 @@ export default function RealOptionsPanel({ form, onUseComparisonRows }) {
         </div>
       )}
 
+      <div className="provider-note">{providerDescriptions[provider]}</div>
+
       <div className="real-options-grid">
         <label className="field">
           <span>Ticker</span>
@@ -69,6 +79,15 @@ export default function RealOptionsPanel({ form, onUseComparisonRows }) {
         <label className="field">
           <span>Expiration</span>
           <input aria-label="Options expiration" type="date" value={expiration} onChange={(event) => setExpiration(event.target.value)} />
+        </label>
+        <label className="field">
+          <span>Provider</span>
+          <select aria-label="Options provider" value={provider} onChange={(event) => setProvider(event.target.value)}>
+            <option value="mock">Mock</option>
+            <option value="alphavantage">Alpha Vantage</option>
+            <option value="marketdata">MarketData.app</option>
+            <option value="tradier">Tradier</option>
+          </select>
         </label>
         <button type="button" className="fetch-button" onClick={handleFetch} disabled={loading || !apiBase}>
           {loading ? <Loader2 size={16} className="spin" /> : <Database size={16} />}

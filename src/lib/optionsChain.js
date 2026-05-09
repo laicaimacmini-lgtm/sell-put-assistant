@@ -28,13 +28,14 @@ export function selectPutsForComparison(puts = [], fallbackSupport, maxRows = 5)
     .map((put) => normalizePutForComparison(put, fallbackSupport));
 }
 
-export async function fetchOptionsChain({ ticker, expiration, apiBase = getOptionsApiBase() }) {
+export async function fetchOptionsChain({ ticker, expiration, provider, apiBase = getOptionsApiBase() }) {
   if (!apiBase) {
     throw new Error('Real options data requires the local API proxy. Run npm run server locally.');
   }
   const url = new URL('/api/options-chain', apiBase);
   url.searchParams.set('ticker', ticker);
   url.searchParams.set('expiration', expiration);
+  if (provider) url.searchParams.set('provider', provider);
   const response = await fetch(url);
   const payload = await response.json();
   if (!response.ok) {
