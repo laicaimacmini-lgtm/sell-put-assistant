@@ -15,6 +15,8 @@ Current latest functionality includes:
 - Default SMH comparison examples for strikes 245, 240, and 235.
 - MarketData.app expiration picker: auto-fetches available put expirations and selects 30-60 DTE preferred date.
 - Smoke script auto-selects expiration for providers that support discovery (yahoo, marketdata).
+- One-command local dev shortcuts: `npm run dev:marketdata`, `npm run smoke:marketdata`, `npm run server:marketdata`.
+- `LOCAL_DEV.md` documents the full SSH tunnel + dev server workflow for real-data local testing.
 - Sorting comparison rows by reward/risk, annualized return, downside buffer, or cash required.
 - Balanced candidate highlighting that weighs reward/risk, delta, position size, strike vs support, and DTE.
 - Risk flags for poor reward/risk, aggressive delta, not enough cash, heavy size, and non-ideal DTE.

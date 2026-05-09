@@ -211,3 +211,37 @@ Fetch expirations via API:
 
 
 The UI shows a 'Delta unavailable for this provider.' message when delta-based sorting is not possible and falls back to OTM/strike-proximity selection for the comparison table.
+
+## Recommended Local Real-Data Workflow (MarketData.app)
+
+For the fastest real-data development loop, use the dedicated shortcuts:
+
+### Smoke test first
+
+```bash
+npm run smoke:marketdata
+```
+
+Confirms MARKETDATA_TOKEN is loaded, auto-selects a 30-60 DTE expiration, and validates the put chain shape.
+
+### Start full dev server
+
+```bash
+npm run dev:marketdata
+```
+
+Starts Express proxy on 8787 and Vite on 5173 with `OPTIONS_DATA_PROVIDER=marketdata` and `VITE_OPTIONS_API_BASE=http://localhost:8787` pre-set.
+
+### SSH tunnel (run on your local machine)
+
+```bash
+ssh -L 5173:127.0.0.1:5173 -L 8787:127.0.0.1:8787 mac2
+```
+
+### Browser URL (on your local machine)
+
+```
+http://localhost:5173/sell-put-assistant/
+```
+
+See `LOCAL_DEV.md` for the full step-by-step guide including troubleshooting.

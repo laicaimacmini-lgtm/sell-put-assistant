@@ -13,7 +13,10 @@
     "test:watch": "vitest",
     "server": "node server/index.js",
     "dev:full": "concurrently \"npm run server\" \"npm run dev\"",
-    "smoke:options": "node scripts/smokeOptionsProvider.js"
+    "smoke:options": "node scripts/smokeOptionsProvider.js",
+    "server:marketdata": "OPTIONS_DATA_PROVIDER=marketdata node server/index.js",
+    "dev:marketdata": "OPTIONS_DATA_PROVIDER=marketdata VITE_OPTIONS_API_BASE=http://localhost:8787 concurrently \"npm run server:marketdata\" \"npm run dev\"",
+    "smoke:marketdata": "npm run smoke:options -- --provider marketdata --ticker SMH"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.1.1",

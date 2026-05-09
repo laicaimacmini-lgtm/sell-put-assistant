@@ -1,5 +1,23 @@
 # Agent Changelog
 
+## 2026-05-09 — Add MarketData local dev scripts
+
+### Changes
+- package.json: Added `server:marketdata`, `dev:marketdata`, `smoke:marketdata` scripts
+- LOCAL_DEV.md: New file documenting SSH tunnel + `npm run dev:marketdata` workflow
+- RUNBOOK.md: Added "Recommended Local Real-Data Workflow" section
+- CURRENT_STATE.md: Updated to reflect new shortcuts
+
+### Details
+- `npm run dev:marketdata` sets `OPTIONS_DATA_PROVIDER=marketdata` and `VITE_OPTIONS_API_BASE=http://localhost:8787` automatically
+- `npm run smoke:marketdata` is shorthand for `smoke:options --provider marketdata --ticker SMH`
+- No tokens printed, no .env committed, no trading APIs
+
+### Test results
+- 53/53 tests pass
+- Build: success
+
+
 ## 2026-05-09 — Add MarketData expiration picker
 
 ### Changes
