@@ -27,7 +27,7 @@ function defaultExpiration() {
   return date.toISOString().slice(0, 10);
 }
 
-export default function RealOptionsPanel({ form, onUseComparisonRows }) {
+export default function RealOptionsPanel({ form, onUseComparisonRows, onChainFetched }) {
   const [ticker, setTicker] = useState(form.ticker || 'SMH');
   const [expiration, setExpiration] = useState(defaultExpiration());
   const [provider, setProvider] = useState('mock');
@@ -35,6 +35,7 @@ export default function RealOptionsPanel({ form, onUseComparisonRows }) {
   const [expirations, setExpirations] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [priceSyncMsg, setPriceSyncMsg] = useState('');
   const [expirationLoading, setExpirationLoading] = useState(false);
   const apiBase = getOptionsApiBase();
 
@@ -65,9 +66,20 @@ export default function RealOptionsPanel({ form, onUseComparisonRows }) {
     setLoading(true);
     setError('');
     setChain(null);
+    setPriceSyncMsg('');
     try {
       const payload = await fetchOptionsChain({ ticker, expiration, provider });
       setChain(payload);
+      if (onChainFetched) {
+        onChainFetched({ puts: payload.puts, underlyingPrice: payload.underlyingPrice ?? null, underlyingPriceSource: payload.underlyingPriceSource ?? null });
+      }
+      if (payload.underlyingPrice != null && payload.underlyingPriceSource === 'marketdata') {
+        setPriceSyncMsg(`Updated current price from MarketData.app: $${Number(payload.underlyingPrice).toFixed(2)}`);
+      } else if (payload.underlyingPrice != null && payload.underlyingPriceSource === 'estimated') {
+        setPriceSyncMsg(`Estimated underlying price: $${Number(payload.underlyingPrice).toFixed(2)}`);
+      } else {
+        setPriceSyncMsg('Underlying price unavailable — current price not updated.');
+      }
     } catch (fetchError) {
       setError(fetchError.message);
     } finally {
@@ -135,6 +147,7 @@ export default function RealOptionsPanel({ form, onUseComparisonRows }) {
       </div>
 
       {error && <div className="error-state">{error}</div>}
+      {priceSyncMsg && <div className="price-sync-msg">{priceSyncMsg}</div>}
       {expirations.length > 0 && <div className="provider-note">{expirations.length} expirations available from {provider}.</div>}
       {chain && (
         <div className="success-state">

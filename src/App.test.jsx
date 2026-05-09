@@ -180,4 +180,65 @@ describe('App', () => {
     expect(screen.getByLabelText(/Strike real-SMH-Y3/i)).toHaveDisplayValue('235');
   });
 
+
+  it('syncs current price from MarketData.app underlyingPrice after fetch', async () => {
+    const user = userEvent.setup();
+    globalThis.__SELL_PUT_OPTIONS_API_BASE__ = 'http://localhost:8787';
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ticker: 'SMH',
+        expiration: '2026-06-19',
+        source: 'marketdata',
+        lastUpdated: new Date().toISOString(),
+        underlyingPrice: 261.5,
+        underlyingPriceSource: 'marketdata',
+        puts: [
+          { symbol: 'SMH-M1', strike: 240, bid: 4.1, ask: 4.3, mid: 4.2, last: 4.15, delta: -0.22, iv: 0.34, openInterest: 1200, volume: 300, dte: 45 },
+        ],
+      }),
+    });
+
+    render(<App />);
+    await user.selectOptions(screen.getByLabelText(/options provider/i), 'marketdata');
+    await user.click(screen.getByRole('button', { name: /fetch put chain/i }));
+
+    await screen.findByText(/Updated current price from MarketData\.app/i);
+    expect(screen.getByLabelText(/Current Price/i)).toHaveDisplayValue('261.5');
+  });
+
+  it('shows price unavailable message when underlyingPrice is null', async () => {
+    const user = userEvent.setup();
+    globalThis.__SELL_PUT_OPTIONS_API_BASE__ = 'http://localhost:8787';
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ticker: 'SMH',
+        expiration: '2026-06-19',
+        source: 'marketdata',
+        lastUpdated: new Date().toISOString(),
+        underlyingPrice: null,
+        underlyingPriceSource: null,
+        puts: [
+          { symbol: 'SMH-M1', strike: 240, bid: 4.1, ask: 4.3, mid: 4.2, last: 4.15, delta: -0.22, iv: 0.34, openInterest: 1200, volume: 300, dte: 45 },
+        ],
+      }),
+    });
+
+    render(<App />);
+    await user.selectOptions(screen.getByLabelText(/options provider/i), 'marketdata');
+    await user.click(screen.getByRole('button', { name: /fetch put chain/i }));
+
+    expect(await screen.findByText(/Underlying price unavailable/i)).toBeInTheDocument();
+  });
+
+  it('shows quick fill support buttons and applies -5% fill', async () => {
+    render(<App />);
+    const btn = screen.getByRole('button', { name: /-5%/i });
+    expect(btn).toBeInTheDocument();
+    await userEvent.setup().click(btn);
+    const expected = (255 * 0.95).toFixed(2);
+    expect(screen.getByLabelText(/Support Level/i)).toHaveDisplayValue(expected);
+  });
+
 });

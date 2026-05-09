@@ -224,3 +224,31 @@ Added `scripts/marketDataDevService.js` for persistent background process manage
 - `npm run bg:marketdata:restart`: ✓ clean stop + start cycle
 - API verified: `curl http://localhost:8787/api/options-expirations?ticker=SMH&provider=marketdata` → 22 expirations
 - Background service left running for immediate SSH tunnel access
+
+---
+
+## 2026-05-09 — Underlying Price Sync + Support Quick Fill
+
+### Changes
+
+**server/optionsProvider.js**
+- `fetchMarketDataOptionsChain`: extracts `underlyingPrice` from columnar array (`data.underlyingPrice[0]`) or scalar field; uses `normalizeNumber` to prevent NaN; returns `{ underlyingPrice: number|null, underlyingPriceSource: 'marketdata'|null }` alongside puts.
+
+**src/components/RealOptionsPanel.jsx**
+- Added `onChainFetched` prop; called after successful fetch with `{ puts, underlyingPrice, underlyingPriceSource }`.
+- Added `priceSyncMsg` state: shows "Updated current price from MarketData.app: $xxx.xx" / "Estimated..." / "Underlying price unavailable" depending on response.
+
+**src/App.jsx**
+- Added `handleChainFetched({ underlyingPrice })`: syncs `form.currentPrice` via `setForm` when `underlyingPrice` is a valid finite number.
+- Added support quick fill buttons: -3%, -5%, -8%, -10% of current price, rounded to 2 decimals.
+- Added `supportStale` derived boolean + inline warning when `support < currentPrice * 0.7 || support > currentPrice`.
+- Passes `onChainFetched={handleChainFetched}` to `RealOptionsPanel`.
+
+**src/styles.css**
+- Added `.quick-fill-row`, `.quick-fill-btn`, `.support-stale-warning`, `.price-sync-msg` styles.
+
+### Validation
+
+- `npm run test`: 59/59 passed (6 new tests: 3 provider underlyingPrice, 3 frontend sync/quickfill/warning)
+- `npm run build`: clean (226.21 kB JS, 10.21 kB CSS)
+- `npm run bg:marketdata:restart`: ✓ port 8787 listening, ✓ port 5173 listening

@@ -295,11 +295,16 @@ async function fetchMarketDataOptionsChain({ ticker, expiration }) {
     );
   }
 
-  const puts = ensurePuts(
-    extractMarketDataOptions(data).filter(isPutOption).map((option) => mapMarketDataPut(option, { expiration })),
-    'MarketData.app',
-  );
-  return { ticker, expiration, source: 'marketdata', lastUpdated: new Date().toISOString(), puts };
+  const rawOptions = extractMarketDataOptions(data);
+  const puts = ensurePuts(rawOptions.filter(isPutOption).map((option) => mapMarketDataPut(option, { expiration })), 'MarketData.app');
+
+  let underlyingPrice = null;
+  let underlyingPriceSource = null;
+  const rawUnderlying = Array.isArray(data?.underlyingPrice) ? data.underlyingPrice[0] : data?.underlyingPrice;
+  const parsedUnderlying = normalizeNumber(rawUnderlying, null);
+  if (parsedUnderlying !== null) { underlyingPrice = parsedUnderlying; underlyingPriceSource = 'marketdata'; }
+
+  return { ticker, expiration, source: 'marketdata', lastUpdated: new Date().toISOString(), underlyingPrice, underlyingPriceSource, puts };
 }
 
 

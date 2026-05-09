@@ -266,6 +266,15 @@ export default function App() {
     setSortBy('rewardRisk');
   }
 
+  function handleChainFetched({ underlyingPrice }) {
+    if (underlyingPrice != null && Number.isFinite(underlyingPrice)) {
+      setForm((current) => ({ ...current, currentPrice: underlyingPrice }));
+    }
+  }
+
+  const supportStale = Number.isFinite(Number(form.currentPrice)) && Number.isFinite(Number(form.support))
+    && (Number(form.support) < Number(form.currentPrice) * 0.7 || Number(form.support) > Number(form.currentPrice));
+
   return (
     <main className="app-shell">
       <section className="hero">
@@ -311,6 +320,22 @@ export default function App() {
             <Field label="Days to Expiration" name="dte" value={form.dte} onChange={updateField} step="1" />
             <Field label="Delta" name="delta" value={form.delta} onChange={updateField} />
             <Field label="Support Level" name="support" value={form.support} onChange={updateField} />
+            <div className="quick-fill-row">
+              {[0.03, 0.05, 0.08, 0.10].map((pct) => {
+                const quick = (Number(form.currentPrice) * (1 - pct)).toFixed(2);
+                return (
+                  <button key={pct} type="button" className="quick-fill-btn" title={`Support at -${(pct * 100).toFixed(0)}% of current price`}
+                    onClick={() => setForm((c) => ({ ...c, support: Number(quick) }))}>
+                    -{(pct * 100).toFixed(0)}%
+                  </button>
+                );
+              })}
+            </div>
+            {supportStale && (
+              <div className="support-stale-warning">
+                Support level may be stale — check that it reflects current chart context.
+              </div>
+            )}
             <Field label="Resistance / Target" name="target" value={form.target} onChange={updateField} />
             <Field label="Account Cash Available" name="cash" value={form.cash} onChange={updateField} step="100" />
             <Field label="Contract Count" name="contracts" value={form.contracts} onChange={updateField} step="1" />
@@ -361,7 +386,7 @@ export default function App() {
         </section>
       </div>
 
-      <RealOptionsPanel form={form} onUseComparisonRows={useRealOptionsRows} />
+      <RealOptionsPanel form={form} onUseComparisonRows={useRealOptionsRows} onChainFetched={handleChainFetched} />
 
       <StrikeComparison
         form={form}

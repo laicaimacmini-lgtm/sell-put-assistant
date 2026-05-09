@@ -303,4 +303,61 @@ describe('optionsProvider', () => {
     await expect(fetchOptionsExpirations({ ticker: 'SMH', provider: 'marketdata' })).rejects.toThrow(/authentication failed/i);
   });
 
+
+  it('includes underlyingPrice from MarketData.app columnar format', async () => {
+    vi.stubEnv('MARKETDATA_TOKEN', 'md-key');
+    vi.stubEnv('MARKETDATA_BASE_URL', 'https://marketdata.test/v1');
+    mockProviderResponse({
+      optionSymbol: ['SMH260619P00240000'],
+      side: ['put'],
+      strike: [240],
+      bid: [4.1], ask: [4.3], last: [4.15],
+      delta: [-0.22], iv: [0.34],
+      openInterest: [1200], volume: [300], dte: [45],
+      underlyingPrice: [257.5],
+    });
+
+    const result = await fetchOptionsChain({ ticker: 'SMH', expiration: '2026-06-19', provider: 'marketdata' });
+
+    expect(result.underlyingPrice).toBe(257.5);
+    expect(result.underlyingPriceSource).toBe('marketdata');
+  });
+
+  it('returns null underlyingPrice when field is absent from MarketData.app response', async () => {
+    vi.stubEnv('MARKETDATA_TOKEN', 'md-key');
+    vi.stubEnv('MARKETDATA_BASE_URL', 'https://marketdata.test/v1');
+    mockProviderResponse({
+      optionSymbol: ['SMH260619P00240000'],
+      side: ['put'],
+      strike: [240],
+      bid: [4.1], ask: [4.3], last: [4.15],
+      delta: [-0.22], iv: [0.34],
+      openInterest: [1200], volume: [300], dte: [45],
+    });
+
+    const result = await fetchOptionsChain({ ticker: 'SMH', expiration: '2026-06-19', provider: 'marketdata' });
+
+    expect(result.underlyingPrice).toBeNull();
+    expect(result.underlyingPriceSource).toBeNull();
+  });
+
+  it('does not let NaN enter underlyingPrice from MarketData.app', async () => {
+    vi.stubEnv('MARKETDATA_TOKEN', 'md-key');
+    vi.stubEnv('MARKETDATA_BASE_URL', 'https://marketdata.test/v1');
+    mockProviderResponse({
+      optionSymbol: ['SMH260619P00240000'],
+      side: ['put'],
+      strike: [240],
+      bid: [4.1], ask: [4.3], last: [4.15],
+      delta: [-0.22], iv: [0.34],
+      openInterest: [1200], volume: [300], dte: [45],
+      underlyingPrice: ['not-a-number'],
+    });
+
+    const result = await fetchOptionsChain({ ticker: 'SMH', expiration: '2026-06-19', provider: 'marketdata' });
+
+    expect(result.underlyingPrice).toBeNull();
+    expect(Number.isNaN(result.underlyingPrice)).toBe(false);
+  });
+
 });

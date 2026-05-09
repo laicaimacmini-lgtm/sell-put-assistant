@@ -18,6 +18,9 @@ Current latest functionality includes:
 - One-command local dev shortcuts: `npm run dev:marketdata`, `npm run smoke:marketdata`, `npm run server:marketdata`.
 - `LOCAL_DEV.md` documents the full SSH tunnel + dev server workflow for real-data local testing.
 - Sorting comparison rows by reward/risk, annualized return, downside buffer, or cash required.
+- **NEW**: After fetching a real MarketData.app put chain, Trade Inputs Current Price is automatically synced from `underlyingPrice` in the API response.
+- **NEW**: Support quick fill buttons (-3%, -5%, -8%, -10%) to set support level relative to current price.
+- **NEW**: Support stale warning shown when support level is outside valid range (< 70% or > 100% of current price).
 - Balanced candidate highlighting that weighs reward/risk, delta, position size, strike vs support, and DTE.
 - Risk flags for poor reward/risk, aggressive delta, not enough cash, heavy size, and non-ideal DTE.
 
