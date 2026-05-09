@@ -4,6 +4,13 @@ Sell Put Assistant is a personal MVP dashboard for reviewing cash-secured put an
 
 The app lets you manually enter a ticker, current price, target put strike, premium, DTE, delta, support, target level, cash available, contract count, and broker. It then calculates cash required, max profit, breakeven, return on cash, annualized return, downside buffer, distance to support, cash usage, and a simplified reward/risk ratio.
 
+## V2 Features
+
+- Compare Put Strikes table for reviewing several manual sell put candidates side by side.
+- Sort candidates by reward/risk, annualized return, downside buffer, or cash required.
+- Highlight a balanced candidate using reward/risk, delta, position sizing, strike vs support, and DTE.
+- Show risk flags for poor reward/risk, aggressive delta, not enough cash, heavy size, and non-ideal DTE.
+
 ## Workflow Principles
 
 - No single signal should directly equal a trade decision.

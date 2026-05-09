@@ -42,4 +42,38 @@ describe('App', () => {
     render(<App />);
     expect(screen.getByText(/not financial advice/i)).toBeInTheDocument();
   });
+
+  it('renders the strike comparison table with three default candidates', () => {
+    render(<App />);
+
+    expect(screen.getByRole('heading', { name: /compare put strikes/i })).toBeInTheDocument();
+    expect(screen.getAllByTestId('comparison-row')).toHaveLength(3);
+  });
+
+  it('adds a row and resets back to the three examples', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /add row/i }));
+    expect(screen.getAllByTestId('comparison-row')).toHaveLength(4);
+
+    await user.click(screen.getByRole('button', { name: /reset examples/i }));
+    expect(screen.getAllByTestId('comparison-row')).toHaveLength(3);
+  });
+
+  it('shows balanced setup guidance in the comparison area', () => {
+    render(<App />);
+    expect(screen.getAllByText(/best balanced setup|no perfect setup/i).length).toBeGreaterThan(0);
+  });
+
+  it('updates comparison risk flags when available cash is reduced', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const cashInput = screen.getByLabelText(/account cash available/i);
+    await user.clear(cashInput);
+    await user.type(cashInput, '10000');
+
+    expect(screen.getAllByText(/not enough cash/i).length).toBeGreaterThan(0);
+  });
 });

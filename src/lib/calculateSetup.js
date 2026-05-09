@@ -14,6 +14,12 @@ export const initialForm = {
   broker: 'E*Trade',
 };
 
+export const defaultStrikeRows = [
+  { id: 'smh-245', strike: 245, premium: 6.2, delta: 0.3, dte: 45, support: 235, contracts: 1 },
+  { id: 'smh-240', strike: 240, premium: 4.2, delta: 0.22, dte: 45, support: 235, contracts: 1 },
+  { id: 'smh-235', strike: 235, premium: 2.7, delta: 0.16, dte: 45, support: 235, contracts: 1 },
+];
+
 export const brokerNotes = {
   'E*Trade': [
     'Confirm option level supports cash-secured puts.',
@@ -192,5 +198,79 @@ export function calculateSetup(input) {
     setupRating,
     suggestedAction,
     rating: setupRating,
+  };
+}
+
+export function getRowRiskFlags(setup) {
+  const flags = [];
+  if (setup.rewardRisk < 1.5) flags.push({ label: 'Avoid / poor R:R', tone: 'danger' });
+  if (setup.delta > 0.4) flags.push({ label: 'Aggressive', tone: 'danger' });
+  if (setup.cashRequired > setup.cash) flags.push({ label: 'Not enough cash', tone: 'danger' });
+  if (setup.cashRequired <= setup.cash && setup.cashUsage > 0.4) flags.push({ label: 'Heavy size', tone: 'danger' });
+  if (setup.dte < 21 || setup.dte > 60) flags.push({ label: 'DTE not ideal', tone: 'watch' });
+  return flags;
+}
+
+export function scoreCandidate(setup) {
+  const deltaOk = setup.delta >= 0.15 && setup.delta <= 0.3;
+  const cashOk = setup.cashUsage <= 0.2 && setup.cashRequired <= setup.cash;
+  const strikeOk = setup.strikeRule.label === 'Conservative' || setup.strikeRule.label === 'Near Support';
+  const dteOk = setup.dteRule.label === 'Good';
+  const rrOk = setup.rewardRisk >= 2;
+
+  let score = 0;
+  if (rrOk) score += 40;
+  if (deltaOk) score += 20;
+  if (cashOk) score += 18;
+  if (strikeOk) score += 14;
+  if (dteOk) score += 8;
+
+  score += Math.min(setup.rewardRisk, 5) * 2;
+  score += Math.max(0, setup.downsideBuffer) * 20;
+  score -= Math.max(0, setup.cashUsage - 0.2) * 35;
+  if (setup.cashRequired > setup.cash) score -= 100;
+  if (setup.delta > 0.4) score -= 30;
+  if (setup.rewardRisk < 1.5) score -= 35;
+
+  return { score, isPerfect: rrOk && deltaOk && cashOk && strikeOk && dteOk };
+}
+
+function sortRows(rows, sortBy) {
+  const sorters = {
+    rewardRisk: (a, b) => b.rewardRisk - a.rewardRisk,
+    annualizedReturn: (a, b) => b.annualizedReturn - a.annualizedReturn,
+    downsideBuffer: (a, b) => b.downsideBuffer - a.downsideBuffer,
+    cashRequired: (a, b) => a.cashRequired - b.cashRequired,
+  };
+  return [...rows].sort(sorters[sortBy] || sorters.rewardRisk);
+}
+
+export function compareStrikes(baseInput, rows, sortBy = 'rewardRisk') {
+  const calculatedRows = rows.map((row, index) => {
+    const setup = calculateSetup({
+      ...baseInput,
+      ...row,
+      support: row.support === '' || row.support == null ? baseInput.support : row.support,
+      contracts: row.contracts === '' || row.contracts == null ? 1 : row.contracts,
+    });
+    const balance = scoreCandidate(setup);
+    return {
+      id: row.id || `candidate-${index + 1}`,
+      source: row,
+      ...setup,
+      riskFlags: getRowRiskFlags(setup),
+      balanceScore: balance.score,
+      isPerfectCandidate: balance.isPerfect,
+    };
+  });
+
+  const best = [...calculatedRows].sort((a, b) => b.balanceScore - a.balanceScore)[0] || null;
+  const sortedRows = sortRows(calculatedRows, sortBy);
+
+  return {
+    rows: sortedRows,
+    bestId: best?.id ?? null,
+    hasPerfectSetup: Boolean(best?.isPerfectCandidate),
+    message: best?.isPerfectCandidate ? 'Best Balanced Setup' : 'No perfect setup. Closest candidate only.',
   };
 }

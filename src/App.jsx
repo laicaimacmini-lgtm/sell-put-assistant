@@ -10,11 +10,21 @@ import {
   Gauge,
   Landmark,
   LineChart,
+  Plus,
+  RotateCcw,
   ShieldCheck,
   Target,
+  Trash2,
   TrendingUp,
 } from 'lucide-react';
-import { brokerNotes, calculateSetup, initialForm, toNumber, watchlist } from './lib/calculateSetup';
+import {
+  brokerNotes,
+  calculateSetup,
+  compareStrikes,
+  defaultStrikeRows,
+  initialForm,
+  watchlist,
+} from './lib/calculateSetup';
 
 const numberFields = new Set([
   'currentPrice',
@@ -27,6 +37,7 @@ const numberFields = new Set([
   'cash',
   'contracts',
 ]);
+const comparisonFields = new Set(['strike', 'premium', 'delta', 'dte', 'support', 'contracts']);
 
 function currency(value, digits = 2) {
   return new Intl.NumberFormat('en-US', {
@@ -41,8 +52,8 @@ function percent(value, digits = 1) {
   return `${((Number.isFinite(value) ? value : 0) * 100).toFixed(digits)}%`;
 }
 
-function Badge({ tone, children }) {
-  return <span className={`badge ${tone}`}>{children}</span>;
+function Badge({ tone, children, className = '' }) {
+  return <span className={`badge ${tone} ${className}`.trim()}>{children}</span>;
 }
 
 function Field({ label, name, value, onChange, type = 'number', step = '0.01' }) {
@@ -78,8 +89,133 @@ function Metric({ label, value, accent }) {
   );
 }
 
+function ComparisonInput({ label, rowId, name, value, onChange, step = '0.01' }) {
+  return (
+    <input
+      aria-label={`${label} ${rowId}`}
+      className="table-input"
+      type="number"
+      step={step}
+      value={value}
+      onChange={(event) => onChange(rowId, name, event.target.value)}
+    />
+  );
+}
+
+function StrikeComparison({ form, rows, sortBy, onSortChange, onRowChange, onAddRow, onRemoveRow, onReset }) {
+  const comparison = useMemo(() => compareStrikes(form, rows, sortBy), [form, rows, sortBy]);
+
+  return (
+    <section className="panel comparison-panel">
+      <div className="comparison-header">
+        <div>
+          <h2>Compare Put Strikes</h2>
+          <p>Compare multiple cash-secured put candidates before choosing a setup.</p>
+        </div>
+        <div className="comparison-actions">
+          <label className="sort-control">
+            <span>Sort by</span>
+            <select aria-label="Sort by" value={sortBy} onChange={(event) => onSortChange(event.target.value)}>
+              <option value="rewardRisk">Reward/Risk</option>
+              <option value="annualizedReturn">Annualized Return</option>
+              <option value="downsideBuffer">Downside Buffer</option>
+              <option value="cashRequired">Cash Required</option>
+            </select>
+          </label>
+          <button type="button" className="icon-button text-button" onClick={onAddRow}>
+            <Plus size={16} /> Add row
+          </button>
+          <button type="button" className="icon-button text-button" onClick={onReset}>
+            <RotateCcw size={16} /> Reset examples
+          </button>
+        </div>
+      </div>
+
+      <div className="comparison-callout">
+        <Badge tone={comparison.hasPerfectSetup ? 'good' : 'watch'} className="balanced-badge">
+          {comparison.message}
+        </Badge>
+        <p>
+          Balanced selection weighs reward/risk, delta, position size, strike vs support, and DTE. It is not a trade recommendation.
+        </p>
+      </div>
+
+      <div className="table-scroll">
+        <table className="comparison-table">
+          <thead>
+            <tr>
+              <th>Candidate</th>
+              <th className="numeric">Strike</th>
+              <th className="numeric">Premium</th>
+              <th className="numeric">Delta</th>
+              <th className="numeric">DTE</th>
+              <th className="numeric">Support</th>
+              <th className="numeric">Contracts</th>
+              <th className="numeric">Cash Required</th>
+              <th className="numeric">Max Profit</th>
+              <th className="numeric">Breakeven</th>
+              <th className="numeric">Return Cash</th>
+              <th className="numeric">Annualized</th>
+              <th className="numeric">Downside Buffer</th>
+              <th className="numeric">Reward/Risk</th>
+              <th className="numeric">Position Size</th>
+              <th>Rating</th>
+              <th>Risk Flags</th>
+              <th aria-label="Actions"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {comparison.rows.map((row, index) => {
+              const isBest = row.id === comparison.bestId;
+              return (
+                <tr key={row.id} data-testid="comparison-row" className={isBest ? 'best-row' : ''}>
+                  <td>
+                    <div className="candidate-cell">
+                      <strong>#{index + 1}</strong>
+                      {isBest && <Badge tone="good" className="balanced-badge">Best Balanced Setup</Badge>}
+                    </div>
+                  </td>
+                  <td><ComparisonInput label="Strike" rowId={row.id} name="strike" value={row.source.strike} onChange={onRowChange} /></td>
+                  <td><ComparisonInput label="Premium" rowId={row.id} name="premium" value={row.source.premium} onChange={onRowChange} /></td>
+                  <td><ComparisonInput label="Delta" rowId={row.id} name="delta" value={row.source.delta} onChange={onRowChange} /></td>
+                  <td><ComparisonInput label="DTE" rowId={row.id} name="dte" value={row.source.dte} onChange={onRowChange} step="1" /></td>
+                  <td><ComparisonInput label="Support" rowId={row.id} name="support" value={row.source.support} onChange={onRowChange} /></td>
+                  <td><ComparisonInput label="Contracts" rowId={row.id} name="contracts" value={row.source.contracts} onChange={onRowChange} step="1" /></td>
+                  <td className="numeric">{currency(row.cashRequired, 0)}</td>
+                  <td className="numeric">{currency(row.maxProfit, 0)}</td>
+                  <td className="numeric">{currency(row.breakeven)}</td>
+                  <td className="numeric">{percent(row.returnOnCash)}</td>
+                  <td className="numeric">{percent(row.annualizedReturn)}</td>
+                  <td className="numeric">{percent(row.downsideBuffer)}</td>
+                  <td className="numeric strong-number">{row.rewardRisk.toFixed(2)}</td>
+                  <td className="numeric">{percent(row.cashUsage)}</td>
+                  <td><Badge tone={row.cashRule.tone === 'danger' || row.rewardRiskRule.tone === 'danger' ? 'danger' : row.setupRating === 'Good Setup' ? 'good' : 'watch'}>{row.setupRating}</Badge></td>
+                  <td>
+                    <div className="flag-list">
+                      {row.riskFlags.length > 0 ? row.riskFlags.map((flag) => (
+                        <Badge key={flag.label} tone={flag.tone}>{flag.label}</Badge>
+                      )) : <Badge tone="neutral">No major flag</Badge>}
+                    </div>
+                  </td>
+                  <td>
+                    <button type="button" className="icon-button remove-button" aria-label={`Remove candidate ${row.id}`} onClick={() => onRemoveRow(row.id)}>
+                      <Trash2 size={15} />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 export default function App() {
   const [form, setForm] = useState(initialForm);
+  const [comparisonRows, setComparisonRows] = useState(defaultStrikeRows);
+  const [sortBy, setSortBy] = useState('rewardRisk');
   const data = useMemo(() => calculateSetup(form), [form]);
 
   function updateField(event) {
@@ -93,6 +229,35 @@ export default function App() {
   function updateSelect(event) {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
+  }
+
+  function updateComparisonRow(rowId, name, value) {
+    if (!comparisonFields.has(name)) return;
+    setComparisonRows((current) => current.map((row) => (row.id === rowId ? { ...row, [name]: value } : row)));
+  }
+
+  function addComparisonRow() {
+    setComparisonRows((current) => [
+      ...current,
+      {
+        id: `candidate-${Date.now()}`,
+        strike: form.strike,
+        premium: form.premium,
+        delta: form.delta,
+        dte: form.dte,
+        support: form.support,
+        contracts: 1,
+      },
+    ]);
+  }
+
+  function removeComparisonRow(rowId) {
+    setComparisonRows((current) => current.length > 1 ? current.filter((row) => row.id !== rowId) : current);
+  }
+
+  function resetComparisonRows() {
+    setComparisonRows(defaultStrikeRows);
+    setSortBy('rewardRisk');
   }
 
   return (
@@ -189,6 +354,17 @@ export default function App() {
           </div>
         </section>
       </div>
+
+      <StrikeComparison
+        form={form}
+        rows={comparisonRows}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
+        onRowChange={updateComparisonRow}
+        onAddRow={addComparisonRow}
+        onRemoveRow={removeComparisonRow}
+        onReset={resetComparisonRows}
+      />
 
       <section className="analysis-grid">
         <RuleCard icon={ClipboardCheck} title="DTE" rule={data.dteRule} />
