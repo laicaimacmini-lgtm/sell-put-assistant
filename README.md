@@ -203,3 +203,13 @@ TRADIER_TOKEN=your_token_here
 ```
 
 Tokens must stay in local `.env` or shell environment only. GitHub Pages does not store tokens and does not directly call real options APIs.
+
+
+### Yahoo Finance Provider (Unofficial Fallback)
+
+Yahoo Finance is available as a no-token fallback. No credentials needed.
+
+
+
+Limitations: unofficial endpoint, no delta/Greeks, may 401/403 without notice.
+The UI shows a delta-unavailable message and uses OTM/strike fallback for comparison.

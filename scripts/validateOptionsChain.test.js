@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { runSmokeOptionsProvider } from './smokeOptionsProvider.js';
+import { pickSmokeExpiration, runSmokeOptionsProvider } from './smokeOptionsProvider.js';
 import { validateOptionsChain } from './validateOptionsChain.js';
 
 afterEach(() => {
@@ -36,9 +36,25 @@ describe('options provider smoke test helpers', () => {
       puts: [{ strike: 240, bid: 4.1, ask: 4.3, mid: '4.2', delta: 'bad', dte: '45' }],
     })).toEqual(expect.arrayContaining([
       'Invalid put format at index 0: mid must be a number',
-      'Invalid put format at index 0: delta must convert to a number',
+      'Invalid put format at index 0: delta must convert to a number when provided',
       'Invalid put format at index 0: dte must be a number',
     ]));
+  });
+
+
+  it('allows null delta for providers without Greeks', () => {
+    expect(validateOptionsChain({
+      ticker: 'SMH',
+      expiration: '2026-06-19',
+      source: 'yahoo',
+      lastUpdated: new Date().toISOString(),
+      puts: [{ strike: 240, bid: 4.1, ask: 4.3, mid: 4.2, delta: null, dte: 45 }],
+    })).toEqual([]);
+  });
+
+  it('picks a 30-60 DTE expiration for provider smoke tests when possible', () => {
+    const picked = pickSmokeExpiration(['2026-05-15', '2026-06-19', '2026-08-21'], new Date('2026-05-09T00:00:00Z'));
+    expect(picked).toBe('2026-06-19');
   });
 
   it('returns a clear failure when a real provider token is missing', async () => {

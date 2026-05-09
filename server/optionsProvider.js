@@ -44,6 +44,17 @@ function calculateDte(expiration, today = new Date()) {
   return Math.max(0, Math.ceil((expiryUtc - todayUtc) / 86400000));
 }
 
+function unixTimestampToDateString(timestamp) {
+  const parsed = normalizeNumber(timestamp, null);
+  if (parsed === null) return null;
+  return new Date(parsed * 1000).toISOString().slice(0, 10);
+}
+
+function expirationToUnixTimestamp(expiration) {
+  const parsed = Date.parse(`${expiration}T00:00:00Z`);
+  return Number.isNaN(parsed) ? null : Math.floor(parsed / 1000);
+}
+
 async function parseJsonResponse(response, providerLabel) {
   try {
     return await response.json();
@@ -65,6 +76,14 @@ function firstValue(...values) {
 function midpointFrom({ bid, ask, last, mark }) {
   if (bid > 0 && ask > 0) return Number(((bid + ask) / 2).toFixed(2));
   return last ?? mark ?? 0;
+}
+
+function alphaVantageErrorMessage(data) {
+  const message = data?.['Error Message'] || data?.Information || data?.Note || 'unknown error';
+  if (/premium|endpoint|subscription|entitlement/i.test(message)) {
+    return `Alpha Vantage options endpoint is premium-required: ${message}`;
+  }
+  return `Alpha Vantage rejected the request: ${message}`;
 }
 
 function ensurePuts(puts, providerLabel) {
@@ -170,7 +189,7 @@ async function fetchAlphaVantageOptionsChain({ ticker, expiration }) {
   if (!response.ok) throw new OptionsProviderError(`Alpha Vantage request failed with HTTP ${response.status}`, response.status);
   const data = await parseJsonResponse(response, 'Alpha Vantage');
   if (data?.['Error Message'] || data?.Information || data?.Note) {
-    throw new OptionsProviderError(`Alpha Vantage rejected the request: ${data['Error Message'] || data.Information || data.Note}`, 400);
+    throw new OptionsProviderError(alphaVantageErrorMessage(data), 400);
   }
 
   const puts = ensurePuts(
@@ -249,6 +268,91 @@ async function fetchMarketDataOptionsChain({ ticker, expiration }) {
   return { ticker, expiration, source: 'marketdata', lastUpdated: new Date().toISOString(), puts };
 }
 
+
+function yahooErrorForStatus(status) {
+  if (status === 401 || status === 403) return 'Yahoo Finance rejected the request. This unofficial local-only endpoint may be unavailable.';
+  if (status === 404) return 'Yahoo Finance returned no options data for this ticker.';
+  return `Yahoo Finance request failed with HTTP ${status}`;
+}
+
+function extractYahooResult(data) {
+  const error = data?.optionChain?.error;
+  if (error) throw new OptionsProviderError(`Yahoo Finance rejected the request: ${error.description || error.message || 'unknown error'}`, 400);
+  const result = data?.optionChain?.result?.[0];
+  if (!result) throw new OptionsProviderError('Yahoo Finance returned an unexpected response format', 502);
+  return result;
+}
+
+async function fetchYahooJson(url) {
+  const response = await fetch(url, { headers: { Accept: 'application/json' } });
+  if (!response.ok) throw new OptionsProviderError(yahooErrorForStatus(response.status), response.status);
+  return parseJsonResponse(response, 'Yahoo Finance');
+}
+
+export function mapYahooPut(option, { expiration } = {}) {
+  const bid = normalizeNumber(option.bid, 0);
+  const ask = normalizeNumber(option.ask, 0);
+  const last = normalizeNumber(firstValue(option.lastPrice, option.last, option.regularMarketPrice), null);
+  const mark = normalizeNumber(firstValue(option.mid, option.mark), null);
+  const optionExpiration = firstValue(option.expirationDate, option.expiration_date, expiration);
+  const mappedExpiration = typeof optionExpiration === 'number' ? unixTimestampToDateString(optionExpiration) : optionExpiration;
+  const dte = normalizeNumber(firstValue(option.dte, option.daysToExpiration, option.days_to_expiration), calculateDte(mappedExpiration || expiration));
+
+  return {
+    symbol: firstValue(option.contractSymbol, option.symbol, option.optionSymbol),
+    strike: normalizeNumber(option.strike, 0),
+    bid,
+    ask,
+    mid: midpointFrom({ bid, ask, last, mark }),
+    last: last ?? 0,
+    delta: null,
+    iv: normalizeNumber(firstValue(option.impliedVolatility, option.iv), null),
+    openInterest: normalizeNumber(firstValue(option.openInterest, option.open_interest), 0),
+    volume: normalizeNumber(option.volume, 0),
+    dte: dte ?? 0,
+  };
+}
+
+async function fetchYahooExpirations({ ticker }) {
+  const baseUrl = process.env.YAHOO_BASE_URL || 'https://query2.finance.yahoo.com/v7/finance/options';
+  const url = new URL(`${baseUrl.replace(/\/$/, '')}/${ticker}`);
+  const data = await fetchYahooJson(url);
+  const result = extractYahooResult(data);
+  const expirations = normalizeOptionArray(result.expirationDates)
+    .map(unixTimestampToDateString)
+    .filter(Boolean);
+
+  if (expirations.length === 0) {
+    throw new OptionsProviderError('No Yahoo Finance expirations returned for this ticker.', 404);
+  }
+
+  return { ticker, source: 'yahoo', expirations };
+}
+
+async function fetchYahooOptionsChain({ ticker, expiration }) {
+  const baseUrl = process.env.YAHOO_BASE_URL || 'https://query2.finance.yahoo.com/v7/finance/options';
+  const url = new URL(`${baseUrl.replace(/\/$/, '')}/${ticker}`);
+  const timestamp = expirationToUnixTimestamp(expiration);
+  if (timestamp === null) throw new OptionsProviderError('expiration must be YYYY-MM-DD for Yahoo provider', 400);
+  url.searchParams.set('date', String(timestamp));
+
+  const data = await fetchYahooJson(url);
+  const result = extractYahooResult(data);
+  const puts = ensurePuts(normalizeOptionArray(result.options?.[0]?.puts).map((option) => mapYahooPut(option, { expiration })), 'Yahoo Finance');
+
+  return { ticker, expiration, source: 'yahoo', lastUpdated: new Date().toISOString(), puts };
+}
+
+export async function fetchOptionsExpirations({ ticker, provider = process.env.OPTIONS_DATA_PROVIDER } = {}) {
+  const normalizedTicker = String(ticker || '').trim().toUpperCase();
+  if (!normalizedTicker) throw new OptionsProviderError('ticker is required', 400);
+
+  const selectedProvider = normalizeProvider(provider);
+  if (selectedProvider === 'yahoo') return fetchYahooExpirations({ ticker: normalizedTicker });
+
+  throw new OptionsProviderError(`${selectedProvider} provider does not support expiration discovery yet. Enter an expiration manually.`, 501);
+}
+
 async function fetchUnsupportedProvider(provider) {
   if (provider === 'alpaca') {
     requireEnv('ALPACA_KEY', 'alpaca');
@@ -268,6 +372,7 @@ export async function fetchOptionsChain({ ticker, expiration, provider = process
   if (selectedProvider === 'alphavantage') return fetchAlphaVantageOptionsChain({ ticker: normalizedTicker, expiration: normalizedExpiration });
   if (selectedProvider === 'marketdata') return fetchMarketDataOptionsChain({ ticker: normalizedTicker, expiration: normalizedExpiration });
   if (selectedProvider === 'tradier') return fetchTradierOptionsChain({ ticker: normalizedTicker, expiration: normalizedExpiration });
+  if (selectedProvider === 'yahoo') return fetchYahooOptionsChain({ ticker: normalizedTicker, expiration: normalizedExpiration });
   if (selectedProvider === 'alpaca') return fetchUnsupportedProvider(selectedProvider);
 
   throw new OptionsProviderError(`Unknown OPTIONS_DATA_PROVIDER: ${selectedProvider}`, 400);

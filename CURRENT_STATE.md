@@ -106,3 +106,21 @@ Tradier is retained but downgraded to optional because it can require Tradier Br
 4. `tradier` as optional brokerage-account-backed access.
 
 Alpha Vantage and MarketData.app providers are implemented defensively behind the local proxy. No token is committed and no frontend code receives provider credentials.
+
+
+## Yahoo Finance Provider (Unofficial Fallback)
+
+Yahoo Finance is now available as an unofficial, no-token fallback options provider.
+
+- Provider key: yahoo
+- Delta unavailable (delta: null always); comparison table uses OTM/strike fallback
+- Expiration discovery: /api/options-expirations?ticker=SMH&provider=yahoo
+- Auto-selection: smoke script picks 30-60 DTE if no expiration supplied
+- Reliability: unofficial endpoint; may return 401/403 without notice
+
+Provider order (updated):
+1. mock - always works, default
+2. alphavantage - personal API key, delta available
+3. marketdata - dedicated market data, delta available
+4. tradier - brokerage account required, delta available
+5. yahoo - unofficial fallback, no token, no delta

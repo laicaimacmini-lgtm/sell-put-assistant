@@ -1,12 +1,19 @@
 import { useMemo, useState } from 'react';
-import { Cloud, Database, Loader2 } from 'lucide-react';
-import { fetchOptionsChain, getOptionsApiBase, selectPutsForComparison } from '../lib/optionsChain';
+import { CalendarDays, Cloud, Database, Loader2 } from 'lucide-react';
+import {
+  fetchOptionsChain,
+  fetchOptionsExpirations,
+  getOptionsApiBase,
+  hasUnavailableDelta,
+  selectPutsForComparison,
+} from '../lib/optionsChain';
 
 const providerDescriptions = {
   mock: 'Mock: built-in sample data',
-  alphavantage: 'Alpha Vantage: lower-friction API key option',
+  yahoo: 'Yahoo Finance: unofficial local-only fallback; no Greeks/delta stability guarantee',
+  alphavantage: 'Alpha Vantage: options endpoint is premium-required',
   marketdata: 'MarketData.app: dedicated options market data API',
-  tradier: 'Tradier: requires Tradier Brokerage/API access',
+  tradier: 'Tradier: optional; requires Tradier Brokerage/API access',
 };
 
 function Badge({ tone, children }) {
@@ -24,14 +31,32 @@ export default function RealOptionsPanel({ form, onUseComparisonRows }) {
   const [expiration, setExpiration] = useState(defaultExpiration());
   const [provider, setProvider] = useState('mock');
   const [chain, setChain] = useState(null);
+  const [expirations, setExpirations] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [expirationLoading, setExpirationLoading] = useState(false);
   const apiBase = getOptionsApiBase();
 
   const selectedRows = useMemo(
-    () => selectPutsForComparison(chain?.puts || [], form.support, 5),
-    [chain, form.support],
+    () => selectPutsForComparison(chain?.puts || [], form.support, 5, form.currentPrice),
+    [chain, form.support, form.currentPrice],
   );
+  const deltaUnavailable = hasUnavailableDelta(chain?.puts || []);
+
+  async function handleFetchExpirations() {
+    setExpirationLoading(true);
+    setError('');
+    try {
+      const payload = await fetchOptionsExpirations({ ticker, provider });
+      setExpirations(payload.expirations || []);
+      if (payload.expirations?.[0]) setExpiration(payload.expirations[0]);
+    } catch (fetchError) {
+      setExpirations([]);
+      setError(fetchError.message);
+    } finally {
+      setExpirationLoading(false);
+    }
+  }
 
   async function handleFetch() {
     setLoading(true);
@@ -78,17 +103,28 @@ export default function RealOptionsPanel({ form, onUseComparisonRows }) {
         </label>
         <label className="field">
           <span>Expiration</span>
-          <input aria-label="Options expiration" type="date" value={expiration} onChange={(event) => setExpiration(event.target.value)} />
+          {expirations.length > 0 ? (
+            <select aria-label="Options expiration" value={expiration} onChange={(event) => setExpiration(event.target.value)}>
+              {expirations.map((date) => <option key={date} value={date}>{date}</option>)}
+            </select>
+          ) : (
+            <input aria-label="Options expiration" type="date" value={expiration} onChange={(event) => setExpiration(event.target.value)} />
+          )}
         </label>
         <label className="field">
           <span>Provider</span>
           <select aria-label="Options provider" value={provider} onChange={(event) => setProvider(event.target.value)}>
             <option value="mock">Mock</option>
+            <option value="yahoo">Yahoo Finance</option>
             <option value="alphavantage">Alpha Vantage</option>
             <option value="marketdata">MarketData.app</option>
             <option value="tradier">Tradier</option>
           </select>
         </label>
+        <button type="button" className="fetch-button secondary" onClick={handleFetchExpirations} disabled={expirationLoading || !apiBase}>
+          {expirationLoading ? <Loader2 size={16} className="spin" /> : <CalendarDays size={16} />}
+          Fetch Expirations
+        </button>
         <button type="button" className="fetch-button" onClick={handleFetch} disabled={loading || !apiBase}>
           {loading ? <Loader2 size={16} className="spin" /> : <Database size={16} />}
           Fetch Put Chain
@@ -96,11 +132,13 @@ export default function RealOptionsPanel({ form, onUseComparisonRows }) {
       </div>
 
       {error && <div className="error-state">{error}</div>}
+      {expirations.length > 0 && <div className="provider-note">{expirations.length} expirations available from {provider}.</div>}
       {chain && (
         <div className="success-state">
           <div>
             <strong>{chain.puts.length} puts fetched</strong>
-            <span>{selectedRows.length} candidates match delta, DTE, and bid/ask filters.</span>
+            <span>{selectedRows.length} candidates match the delta/DTE filters, or the OTM fallback when delta is unavailable.</span>
+            {deltaUnavailable && <span>Delta unavailable for this provider. Comparison rows use an OTM/strike-based fallback.</span>}
           </div>
           <button type="button" className="fetch-button secondary" onClick={handleUseRows} disabled={selectedRows.length === 0}>
             Use in Comparison Table

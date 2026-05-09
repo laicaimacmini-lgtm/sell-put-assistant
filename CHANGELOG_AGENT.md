@@ -129,3 +129,19 @@ Notes:
 
 - No real tokens are committed.
 - No trading/order endpoint is connected.
+
+
+## 2026-05-09 - Add Yahoo Finance Options Provider Fallback
+
+Implemented Yahoo Finance as an unofficial, no-token fallback options provider.
+
+Changes:
+- server/optionsProvider.js: Yahoo fetch, expiration discovery, put mapping (delta: null)
+- server/index.js: /api/options-expirations endpoint, fixed import
+- src/lib/optionsChain.js: fixed Codex syntax errors, hasDelta null-handling, fetchOptionsExpirations, hasUnavailableDelta
+- src/components/RealOptionsPanel.jsx: yahoo dropdown, Fetch Expirations button, delta-unavailable message
+- scripts/smokeOptionsProvider.js: auto-select 30-60 DTE expiration, formatDelta(null)
+- Tests: 49/49 passed. Build: passed.
+- Mock smoke: PASS. Yahoo smoke: expected FAIL (unofficial endpoint unavailable - clear error)
+
+Commit: Add Yahoo options provider fallback

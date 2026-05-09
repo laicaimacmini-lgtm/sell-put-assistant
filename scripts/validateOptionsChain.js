@@ -16,17 +16,22 @@ export function validateOptionsChain(response) {
 
     response.puts.forEach((put, index) => {
       const prefix = `Invalid put format at index ${index}`;
-      for (const field of ['strike', 'bid', 'ask', 'mid', 'delta', 'dte']) {
+      for (const field of ['strike', 'bid', 'ask', 'mid', 'dte']) {
         if (put[field] === undefined || put[field] === null || put[field] === '') {
           errors.push(`${prefix}: missing ${field}`);
         }
       }
+      if (!Object.prototype.hasOwnProperty.call(put, 'delta')) {
+        errors.push(`${prefix}: missing delta`);
+      }
       if (put.mid !== undefined && typeof put.mid !== 'number') {
         errors.push(`${prefix}: mid must be a number`);
       }
-      const absDelta = Math.abs(Number(put.delta));
-      if (!Number.isFinite(absDelta)) {
-        errors.push(`${prefix}: delta must convert to a number`);
+      if (put.delta !== null && put.delta !== undefined && put.delta !== '') {
+        const absDelta = Math.abs(Number(put.delta));
+        if (!Number.isFinite(absDelta)) {
+          errors.push(`${prefix}: delta must convert to a number when provided`);
+        }
       }
       if (put.dte !== undefined && typeof put.dte !== 'number') {
         errors.push(`${prefix}: dte must be a number`);

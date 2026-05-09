@@ -94,7 +94,10 @@ describe('App', () => {
     render(<App />);
 
     await user.selectOptions(screen.getByLabelText(/options provider/i), 'alphavantage');
-    expect(screen.getByText(/Alpha Vantage: lower-friction API key option/i)).toBeInTheDocument();
+    expect(screen.getByText(/Alpha Vantage: options endpoint is premium-required/i)).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText(/options provider/i), 'yahoo');
+    expect(screen.getByText(/Yahoo Finance: unofficial local-only fallback/i)).toBeInTheDocument();
 
     await user.selectOptions(screen.getByLabelText(/options provider/i), 'marketdata');
     expect(screen.getByText(/MarketData.app: dedicated options market data API/i)).toBeInTheDocument();
@@ -132,4 +135,49 @@ describe('App', () => {
     expect(screen.getAllByTestId('comparison-row')).toHaveLength(3);
     expect(screen.getByLabelText(/Strike real-SMH-A/i)).toHaveDisplayValue('245');
   });
+
+  it('fetches Yahoo expirations through the local proxy', async () => {
+    const user = userEvent.setup();
+    globalThis.__SELL_PUT_OPTIONS_API_BASE__ = 'http://localhost:8787';
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ ticker: 'SMH', source: 'yahoo', expirations: ['2026-06-19', '2026-06-26'] }),
+    });
+
+    render(<App />);
+    await user.selectOptions(screen.getByLabelText(/options provider/i), 'yahoo');
+    await user.click(screen.getByRole('button', { name: /fetch expirations/i }));
+
+    expect(fetch).toHaveBeenCalledWith(expect.objectContaining({ href: expect.stringContaining('/api/options-expirations?ticker=SMH&provider=yahoo') }));
+    expect(await screen.findByText(/2 expirations available from yahoo/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/options expiration/i)).toHaveDisplayValue('2026-06-19');
+  });
+
+  it('uses OTM fallback rows when fetched data has no delta', async () => {
+    const user = userEvent.setup();
+    globalThis.__SELL_PUT_OPTIONS_API_BASE__ = 'http://localhost:8787';
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ticker: 'SMH',
+        expiration: '2026-06-19',
+        source: 'yahoo',
+        lastUpdated: new Date().toISOString(),
+        puts: [
+          { symbol: 'SMH-Y1', strike: 245, bid: 6.1, ask: 6.3, mid: 6.2, last: 6.15, delta: null, iv: 0.36, openInterest: 100, volume: 20, dte: 45 },
+          { symbol: 'SMH-Y2', strike: 240, bid: 4.1, ask: 4.3, mid: 4.2, last: 4.15, delta: null, iv: 0.34, openInterest: 100, volume: 20, dte: 45 },
+          { symbol: 'SMH-Y3', strike: 235, bid: 2.6, ask: 2.8, mid: 2.7, last: 2.7, delta: null, iv: 0.33, openInterest: 100, volume: 20, dte: 45 },
+        ],
+      }),
+    });
+
+    render(<App />);
+    await user.selectOptions(screen.getByLabelText(/options provider/i), 'yahoo');
+    await user.click(screen.getByRole('button', { name: /fetch put chain/i }));
+
+    expect(await screen.findByText(/Delta unavailable for this provider/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /use in comparison table/i }));
+    expect(screen.getByLabelText(/Strike real-SMH-Y3/i)).toHaveDisplayValue('235');
+  });
+
 });

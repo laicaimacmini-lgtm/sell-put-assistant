@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   fetchOptionsChain,
+  fetchOptionsExpirations,
   mapAlphaVantagePut,
   mapMarketDataPut,
   mapTradierPut,
+  mapYahooPut,
 } from './optionsProvider.js';
 
 afterEach(() => {
@@ -170,6 +172,79 @@ describe('optionsProvider', () => {
 
   it('maps MarketData.app object helper format', () => {
     expect(mapMarketDataPut({ optionSymbol: 'X', side: 'put', strike: '100', bidPrice: '1.00', askPrice: '1.20', lastPrice: '1.10', delta: '-0.2', impliedVolatility: '0.4', oi: '12', volume: '3', dte: '45' })).toEqual(expect.objectContaining({ symbol: 'X', strike: 100, mid: 1.1, delta: -0.2, iv: 0.4, openInterest: 12, volume: 3, dte: 45 }));
+  });
+
+
+
+  it('maps Yahoo Finance puts without delta into the unified shape', () => {
+    const mapped = mapYahooPut({
+      contractSymbol: 'SMH260619P00240000',
+      strike: 240,
+      bid: 4.1,
+      ask: 4.3,
+      lastPrice: 4.15,
+      impliedVolatility: 0.34,
+      openInterest: 1200,
+      volume: 300,
+    }, { expiration: '2026-06-19' });
+
+    expect(mapped).toEqual(expect.objectContaining({
+      symbol: 'SMH260619P00240000',
+      strike: 240,
+      bid: 4.1,
+      ask: 4.3,
+      mid: 4.2,
+      last: 4.15,
+      delta: null,
+      iv: 0.34,
+      openInterest: 1200,
+      volume: 300,
+      dte: expect.any(Number),
+    }));
+  });
+
+  it('fetches Yahoo chains and keeps delta unavailable without crashing', async () => {
+    mockProviderResponse({
+      optionChain: {
+        result: [{
+          options: [{
+            puts: [
+              { contractSymbol: 'SMH260619P00240000', strike: 240, bid: 4.1, ask: 4.3, lastPrice: 4.15, impliedVolatility: 0.34, openInterest: 1200, volume: 300 },
+            ],
+          }],
+        }],
+      },
+    });
+
+    const result = await fetchOptionsChain({ ticker: 'SMH', expiration: '2026-06-19', provider: 'yahoo' });
+
+    expect(fetch).toHaveBeenCalledWith(expect.objectContaining({ href: expect.stringContaining('/SMH?date=') }), expect.any(Object));
+    expect(result.source).toBe('yahoo');
+    expect(result.puts).toHaveLength(1);
+    expect(result.puts[0]).toEqual(expect.objectContaining({ strike: 240, mid: 4.2, delta: null }));
+  });
+
+  it('fetches Yahoo expirations from expiration timestamps', async () => {
+    mockProviderResponse({
+      optionChain: {
+        result: [{ expirationDates: [1781827200, 1782432000] }],
+      },
+    });
+
+    const result = await fetchOptionsExpirations({ ticker: 'SMH', provider: 'yahoo' });
+
+    expect(result).toEqual({
+      ticker: 'SMH',
+      source: 'yahoo',
+      expirations: ['2026-06-19', '2026-06-26'],
+    });
+  });
+
+  it('returns a clear error when Alpha Vantage reports premium-only options access', async () => {
+    vi.stubEnv('ALPHAVANTAGE_API_KEY', 'av-key');
+    mockProviderResponse({ Information: 'This endpoint is only available to premium subscribers.' });
+
+    await expect(fetchOptionsChain({ ticker: 'SMH', expiration: '2026-06-19', provider: 'alphavantage' })).rejects.toThrow(/premium-required/i);
   });
 
   it('returns a clear Tradier authentication error for 401', async () => {

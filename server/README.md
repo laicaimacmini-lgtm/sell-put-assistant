@@ -96,3 +96,17 @@ Default provider priority for this personal project:
 4. `tradier`: optional; requires Tradier Brokerage/API access and may require brokerage KYC.
 
 Tradier remains supported for market/options chain reads only, but it is no longer the preferred first real-data provider for this project. No trading/order endpoints are connected.
+
+
+### Yahoo Finance Provider
+
+Yahoo Finance is available as an unofficial, no-token fallback.
+
+Endpoints:
+  GET /api/options-expirations?ticker=SMH&provider=yahoo
+  GET /api/options-chain?ticker=SMH&expiration=2026-06-19&provider=yahoo
+
+Limitations:
+- Unofficial endpoint: no SLA, may 401/403 at any time.
+- No Greeks returned: delta is always null.
+- Expiration dates sourced from Yahoo list; unix timestamp conversion is server-side.

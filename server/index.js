@@ -1,7 +1,7 @@
 import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
-import { fetchOptionsChain, OptionsProviderError } from './optionsProvider.js';
+import { fetchOptionsChain, fetchOptionsExpirations, OptionsProviderError } from './optionsProvider.js';
 
 dotenv.config();
 
@@ -28,6 +28,23 @@ app.get('/api/options-chain', async (req, res) => {
     res.status(status).json({
       error: error.message || 'Unknown options provider error',
       source: process.env.OPTIONS_DATA_PROVIDER || 'mock',
+    });
+  }
+});
+
+
+app.get("/api/options-expirations", async (req, res) => {
+  try {
+    const result = await fetchOptionsExpirations({
+      ticker: req.query.ticker,
+      provider: req.query.provider,
+    });
+    res.json(result);
+  } catch (error) {
+    const status = error instanceof OptionsProviderError ? error.status : 500;
+    res.status(status).json({
+      error: error.message || "Unknown options expiration provider error",
+      source: req.query.provider || process.env.OPTIONS_DATA_PROVIDER || "mock",
     });
   }
 });

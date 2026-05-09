@@ -186,3 +186,28 @@ npm run smoke:options -- --provider tradier --ticker SMH --expiration 2026-06-19
 ```
 
 With real local tokens, put credentials in `.env` and do not commit them. The smoke test validates data reads only; it must not trade or place orders.
+
+## Yahoo Finance Provider (Unofficial Fallback)
+
+Yahoo Finance provider is implemented as an unofficial local-only fallback. It calls the undocumented Yahoo Finance options endpoint and does not require an API token.
+
+**Important limitations:**
+- Yahoo Finance does not return Greeks (delta, gamma, theta, vega). Delta is always .
+- This is an unofficial endpoint and may return 401/403 at any time without notice.
+- The provider auto-selects expirations from Yahoo's expiration list; no manual date needed.
+
+Smoke test (auto-selects expiration, 30–60 DTE preferred):
+
+
+
+Explicit expiration (must be a date Yahoo offers for the ticker):
+
+
+
+If the command fails with 'Yahoo Finance rejected the request', the unofficial endpoint is unavailable. Use , , , or  as alternatives.
+
+Fetch expirations via API:
+
+
+
+The UI shows a 'Delta unavailable for this provider.' message when delta-based sorting is not possible and falls back to OTM/strike-proximity selection for the comparison table.

@@ -23,4 +23,20 @@ describe('optionsChain selection', () => {
     expect(rows.every((row) => row.dte >= 21 && row.dte <= 60)).toBe(true);
     expect(rows.every((row) => row.premium > 0)).toBe(true);
   });
+
+  it('falls back to OTM strike selection when delta is unavailable', () => {
+    const puts = [
+      { symbol: 'A', strike: 260, bid: 9, ask: 9.4, mid: 9.2, delta: null, dte: 45 },
+      { symbol: 'B', strike: 245, bid: 6.1, ask: 6.3, mid: 6.2, delta: null, dte: 45 },
+      { symbol: 'C', strike: 240, bid: 4.1, ask: 4.3, mid: 4.2, delta: null, dte: 45 },
+      { symbol: 'D', strike: 235, bid: 2.6, ask: 2.8, mid: 2.7, delta: null, dte: 45 },
+    ];
+
+    const rows = selectPutsForComparison(puts, 235, 3, 255);
+
+    expect(rows).toHaveLength(3);
+    expect(rows.map((row) => row.sourceSymbol)).toEqual(['D', 'C', 'B']);
+    expect(rows.every((row) => row.delta === '')).toBe(true);
+  });
+
 });

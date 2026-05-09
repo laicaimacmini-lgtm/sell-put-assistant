@@ -60,3 +60,18 @@ For this personal risk/reward workflow tool, the preferred exploration order is 
 4. Tradier only when the user already has appropriate Brokerage/API access.
 
 This keeps the project focused on market/options data reads only and avoids turning it into a brokerage integration.
+
+
+## Yahoo Finance as Unofficial No-Token Options Fallback
+
+Yahoo Finance is added as an unofficial, zero-token fallback provider.
+
+Reasons:
+- Alpha Vantage, MarketData.app, and Tradier all require API tokens or brokerage accounts.
+- Yahoo Finance options endpoint requires no token.
+- Enables quick sanity checks without any credential setup.
+
+Trade-offs accepted:
+- Unofficial endpoint: no SLA, may 401/403 without notice.
+- No Greeks returned: delta is always null; comparison table falls back to OTM/strike-proximity sort.
+- Not suitable for production; strictly a local development fallback.
