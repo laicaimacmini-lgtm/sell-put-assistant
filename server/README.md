@@ -110,3 +110,30 @@ Limitations:
 - Unofficial endpoint: no SLA, may 401/403 at any time.
 - No Greeks returned: delta is always null.
 - Expiration dates sourced from Yahoo list; unix timestamp conversion is server-side.
+
+
+## Webull OpenAPI Candidate Scaffold
+
+Provider key:
+
+```text
+webull
+```
+
+Environment placeholders:
+
+```text
+WEBULL_APP_KEY=
+WEBULL_APP_SECRET=
+WEBULL_ACCESS_TOKEN=
+```
+
+Current behavior:
+
+- Missing credentials returns `Missing WEBULL OpenAPI credentials`.
+- Credentials present still returns a scaffold-only error until an official options-chain market-data endpoint is confirmed.
+- The provider must never call Webull trading/order endpoints.
+
+Reason:
+
+Official docs reviewed on 2026-05-10 do not confirm US options market-data / option-chain support for Webull users. See `docs/WEBULL_PROVIDER_EVAL.md`.

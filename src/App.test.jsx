@@ -104,6 +104,9 @@ describe('App', () => {
 
     await user.selectOptions(screen.getByLabelText(/options provider/i), 'tradier');
     expect(screen.getByText(/requires Tradier Brokerage\/API access/i)).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText(/options provider/i), 'webull');
+    expect(screen.getByText(/Webull OpenAPI: candidate provider/i)).toBeInTheDocument();
   });
 
   it('fetches mock options data and uses filtered puts in the comparison table', async () => {

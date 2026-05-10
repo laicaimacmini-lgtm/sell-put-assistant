@@ -20,6 +20,7 @@ function requireEnv(name, provider) {
     tradier: 'Missing TRADIER_TOKEN for Tradier provider',
     alphavantage: 'Missing ALPHAVANTAGE_API_KEY for Alpha Vantage provider',
     marketdata: 'Missing MARKETDATA_TOKEN for MarketData.app provider',
+    webull: 'Missing WEBULL OpenAPI credentials',
   };
   throw new OptionsProviderError(messages[provider] || `${provider} provider requires ${name}. Add it to local .env; never expose it in frontend code.`, 400);
 }
@@ -443,6 +444,25 @@ export async function fetchOptionsExpirations({ ticker, provider = process.env.O
   throw new OptionsProviderError(`${selectedProvider} provider does not support expiration discovery yet. Enter an expiration manually.`, 501);
 }
 
+
+function requireWebullCredentials() {
+  const appKey = process.env.WEBULL_APP_KEY;
+  const appSecret = process.env.WEBULL_APP_SECRET;
+  const accessToken = process.env.WEBULL_ACCESS_TOKEN;
+  if (!appKey || !appSecret || !accessToken) {
+    throw new OptionsProviderError('Missing WEBULL OpenAPI credentials', 400);
+  }
+  return { appKey, appSecret, accessToken };
+}
+
+async function fetchWebullOptionsChain() {
+  requireWebullCredentials();
+  throw new OptionsProviderError(
+    'Webull OpenAPI options market-data provider is scaffolded only. Official docs currently do not show US options market data support for Webull users; do not call trading endpoints.',
+    501,
+  );
+}
+
 async function fetchUnsupportedProvider(provider) {
   if (provider === 'alpaca') {
     requireEnv('ALPACA_KEY', 'alpaca');
@@ -463,6 +483,7 @@ export async function fetchOptionsChain({ ticker, expiration, provider = process
   if (selectedProvider === 'marketdata') return fetchMarketDataOptionsChain({ ticker: normalizedTicker, expiration: normalizedExpiration });
   if (selectedProvider === 'tradier') return fetchTradierOptionsChain({ ticker: normalizedTicker, expiration: normalizedExpiration });
   if (selectedProvider === 'yahoo') return fetchYahooOptionsChain({ ticker: normalizedTicker, expiration: normalizedExpiration });
+  if (selectedProvider === 'webull') return fetchWebullOptionsChain();
   if (selectedProvider === 'alpaca') return fetchUnsupportedProvider(selectedProvider);
 
   throw new OptionsProviderError(`Unknown OPTIONS_DATA_PROVIDER: ${selectedProvider}`, 400);

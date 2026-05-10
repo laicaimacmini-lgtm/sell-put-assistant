@@ -284,3 +284,38 @@ npm run update:marketdata
 
 Only run `update:marketdata` when the working tree is clean (no local uncommitted changes).
 
+
+## Webull OpenAPI Candidate Provider
+
+Webull is currently an evaluation-only candidate, not an active options data provider.
+
+Scaffold behavior:
+
+```bash
+npm run smoke:options -- --provider webull --ticker SMH --expiration 2026-06-19
+```
+
+Expected without credentials:
+
+```text
+Missing WEBULL OpenAPI credentials
+```
+
+Potential future local `.env` fields:
+
+```text
+WEBULL_APP_KEY=
+WEBULL_APP_SECRET=
+WEBULL_ACCESS_TOKEN=
+```
+
+Do not put these in frontend code and do not commit `.env`.
+
+Before implementing real Webull calls, confirm with Webull support:
+
+1. US options chain market-data endpoint exists.
+2. It returns bid/ask/last and, if available, delta/IV/OI/volume.
+3. Market-data-only access is allowed without using trading/order endpoints.
+4. Required OpenAPI approval and separate market data subscription.
+
+See `docs/WEBULL_PROVIDER_EVAL.md` for the current research notes.

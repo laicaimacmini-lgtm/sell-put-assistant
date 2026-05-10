@@ -213,3 +213,19 @@ Yahoo Finance is available as a no-token fallback. No credentials needed.
 
 Limitations: unofficial endpoint, no delta/Greeks, may 401/403 without notice.
 The UI shows a delta-unavailable message and uses OTM/strike fallback for comparison.
+
+
+## Webull OpenAPI Evaluation
+
+Webull OpenAPI is tracked as a candidate provider because broker-side quotes may be fresher than some delayed market-data feeds. It is not active yet.
+
+Current conclusion:
+
+- Official docs mention single-stock options as a trading product.
+- Official Market Data API docs mark US Options as not supported for Webull users.
+- No official market-data-only option chain endpoint was found.
+- Webull likely requires OpenAPI approval and may require a separate OpenAPI market-data subscription.
+
+A safe `webull` provider scaffold exists only to return clear credential/scaffold errors. It does not call trading/order endpoints and does not send credentials to the frontend.
+
+See `docs/WEBULL_PROVIDER_EVAL.md` for details.

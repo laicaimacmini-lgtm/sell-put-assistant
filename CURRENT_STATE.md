@@ -184,3 +184,16 @@ A persistent background dev service is now available for MarketData.app local de
 - Service binds only to 127.0.0.1 — not exposed to public network
 - `.runtime/` is gitignored; contains pid files and combined log
 - `LOCAL_DEV.md` updated with background workflow and SSH tunnel instructions
+
+
+## Webull OpenAPI Provider Evaluation (2026-05-10)
+
+Webull OpenAPI has been evaluated as a possible provider for fresher options bid/ask data. Current conclusion: **candidate only, not ready as an implemented data provider**.
+
+- Official docs list single-stock options as a trading product, but the Market Data API overview marks US Options as not supported for Webull users.
+- No official market-data-only option chain endpoint was found in the reviewed docs.
+- Webull may require OpenAPI approval, App Key/App Secret credentials, access token flow, and a separate OpenAPI market data subscription.
+- A `webull` provider scaffold now exists only to guard credentials and document the boundary; it does not call Webull APIs.
+- The project must not call Webull trading/order endpoints for quote discovery.
+
+Evaluation details: `docs/WEBULL_PROVIDER_EVAL.md`.

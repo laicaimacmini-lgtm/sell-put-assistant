@@ -75,3 +75,22 @@ Trade-offs accepted:
 - Unofficial endpoint: no SLA, may 401/403 without notice.
 - No Greeks returned: delta is always null; comparison table falls back to OTM/strike-proximity sort.
 - Not suitable for production; strictly a local development fallback.
+
+
+## Treat Webull OpenAPI As Candidate-Only Until Options Market Data Is Confirmed
+
+Webull was evaluated because MarketData.app quotes can be delayed/stale compared with broker quotes. Webull may be closer to broker-side quotes, but official docs do not currently expose a clear US options chain market-data endpoint.
+
+Decision:
+
+- Keep Webull as a candidate provider, not a production provider.
+- Add only a safe scaffold that returns `Missing WEBULL OpenAPI credentials` when credentials are absent.
+- Do not call Webull trading/order endpoints.
+- Do not install SDKs or attempt real calls until Webull confirms market-data-only option chain support and required subscriptions.
+
+Reasons:
+
+- The project needs options chain bid/ask, not order placement.
+- Official docs list US options under trading products, while Market Data API support for US Options is marked unavailable for Webull users.
+- OpenAPI advanced quote subscriptions are separate from mobile/desktop subscriptions.
+- Secrets must stay local and server-side only.

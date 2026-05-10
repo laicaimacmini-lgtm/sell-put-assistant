@@ -15,6 +15,7 @@ const providerDescriptions = {
   alphavantage: 'Alpha Vantage: options endpoint is premium-required',
   marketdata: 'MarketData.app: dedicated options market data API',
   tradier: 'Tradier: optional; requires Tradier Brokerage/API access',
+  webull: 'Webull OpenAPI: candidate provider; API approval/subscription likely required',
 };
 
 function Badge({ tone, children }) {
@@ -237,6 +238,7 @@ export default function RealOptionsPanel({ form, onUseComparisonRows, onChainFet
             <option value="alphavantage">Alpha Vantage</option>
             <option value="marketdata">MarketData.app</option>
             <option value="tradier">Tradier</option>
+            <option value="webull">Webull OpenAPI</option>
           </select>
         </label>
         <button type="button" className="fetch-button secondary" onClick={handleFetchExpirations} disabled={expirationLoading || !apiBase}>

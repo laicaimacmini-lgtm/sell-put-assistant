@@ -318,3 +318,25 @@ Added `scripts/marketDataDevService.js` for persistent background process manage
 ### Changed
 - RealOptionsPanel: added comparisonRowsSource prop, chainApplied state, autoApply state, lastUpdated state, autoLoading state, autoFetchedRef.
 - App.jsx: added comparisonRowsSource state, passes it to RealOptionsPanel and uses it for stale comparison warning.
+
+
+## 2026-05-10 — Evaluate Webull OpenAPI Options Provider
+
+Completed:
+
+- Reviewed official Webull OpenAPI docs for options market-data suitability.
+- Added `docs/WEBULL_PROVIDER_EVAL.md` with findings, risks, and next manual actions.
+- Added safe `webull` provider scaffold that does not call real APIs or trading/order endpoints.
+- Added placeholder env vars to `.env.example`.
+- Added Webull provider dropdown copy for the Real Options Data panel.
+
+Findings:
+
+- Webull supports single-stock options as a trading product, but official Market Data API docs mark US Options as not supported for Webull users.
+- No official option chain market-data endpoint was found in the reviewed docs.
+- Webull likely requires OpenAPI approval and may require a separate OpenAPI market data subscription.
+
+Safety:
+
+- No Webull token or secret was printed or committed.
+- No trading/order endpoint was connected.

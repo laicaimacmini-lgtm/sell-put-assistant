@@ -30,9 +30,10 @@ describe('optionsProvider', () => {
     await expect(fetchOptionsChain({ ticker: 'SMH', expiration: '2026-06-19' })).rejects.toThrow(/Missing TRADIER_TOKEN for Tradier provider/i);
   });
 
-  it('returns clear errors when Alpha Vantage and MarketData tokens are missing', async () => {
+  it('returns clear errors when Alpha Vantage, MarketData, and Webull credentials are missing', async () => {
     await expect(fetchOptionsChain({ ticker: 'SMH', expiration: '2026-06-19', provider: 'alphavantage' })).rejects.toThrow(/Missing ALPHAVANTAGE_API_KEY/i);
     await expect(fetchOptionsChain({ ticker: 'SMH', expiration: '2026-06-19', provider: 'marketdata' })).rejects.toThrow(/Missing MARKETDATA_TOKEN/i);
+    await expect(fetchOptionsChain({ ticker: 'SMH', expiration: '2026-06-19', provider: 'webull' })).rejects.toThrow(/Missing WEBULL OpenAPI credentials/i);
   });
 
   it('returns mock puts by default', async () => {
