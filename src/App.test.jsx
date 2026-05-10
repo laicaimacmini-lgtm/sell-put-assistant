@@ -113,6 +113,7 @@ describe('App', () => {
       ok: true,
       json: async () => ({
         ticker: 'SMH',
+        expirations: ['2026-06-19'],
         expiration: '2026-06-19',
         source: 'mock',
         lastUpdated: new Date().toISOString(),
@@ -126,6 +127,9 @@ describe('App', () => {
     });
 
     render(<App />);
+    // Wait for auto-fetch (marketdata) to complete, then switch to mock for manual test
+    await screen.findByText(/puts fetched/i);
+    await user.selectOptions(screen.getByLabelText(/options provider/i), 'mock');
     await user.click(screen.getByRole('button', { name: /fetch put chain/i }));
     expect(fetch).toHaveBeenCalledWith(expect.objectContaining({ href: expect.stringContaining('provider=mock') }));
     expect(await screen.findByText(/4 puts fetched/i)).toBeInTheDocument();
@@ -141,10 +145,13 @@ describe('App', () => {
     globalThis.__SELL_PUT_OPTIONS_API_BASE__ = 'http://localhost:8787';
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
-      json: async () => ({ ticker: 'SMH', source: 'yahoo', expirations: ['2026-06-19', '2026-06-26'] }),
+      json: async () => ({ ticker: 'SMH', source: 'yahoo', expirations: ['2026-06-19', '2026-06-26'],
+        expiration: '2026-06-19', lastUpdated: new Date().toISOString(), puts: [] }),
     });
 
     render(<App />);
+    // Wait for auto-fetch (marketdata) to settle, then switch to yahoo
+    await screen.findByText(/puts fetched|auto-load|loading/i).catch(() => {});
     await user.selectOptions(screen.getByLabelText(/options provider/i), 'yahoo');
     await user.click(screen.getByRole('button', { name: /fetch expirations/i }));
 
@@ -387,11 +394,11 @@ describe('App', () => {
   });
 
   it('does not auto-fetch when provider is not marketdata', async () => {
-    globalThis.__SELL_PUT_OPTIONS_API_BASE__ = 'http://localhost:8787';
+    globalThis.__SELL_PUT_OPTIONS_API_BASE__ = '';
     const mockFetch = vi.spyOn(globalThis, 'fetch');
 
     render(<App />);
-    // default provider is mock
+    // default provider is mock when apiBase is empty
     await new Promise((r) => setTimeout(r, 100));
     expect(mockFetch).not.toHaveBeenCalled();
   });

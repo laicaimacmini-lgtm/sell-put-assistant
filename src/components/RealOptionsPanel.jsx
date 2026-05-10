@@ -30,7 +30,7 @@ function defaultExpiration() {
 export default function RealOptionsPanel({ form, onUseComparisonRows, onChainFetched, comparisonRowsSource }) {
   const [ticker, setTicker] = useState(form.ticker || 'SMH');
   const [expiration, setExpiration] = useState(defaultExpiration());
-  const [provider, setProvider] = useState('mock');
+  const [provider, setProvider] = useState(() => getOptionsApiBase() ? 'marketdata' : 'mock');
   const [chain, setChain] = useState(null);
   const [expirations, setExpirations] = useState([]);
   const [error, setError] = useState('');
@@ -41,7 +41,7 @@ export default function RealOptionsPanel({ form, onUseComparisonRows, onChainFet
   const [lastUpdated, setLastUpdated] = useState('');
   const [autoLoading, setAutoLoading] = useState(false);
   const [chainApplied, setChainApplied] = useState(false);
-  const autoFetchedRef = useRef(new Set());
+  const autoFetchKeyRef = useRef(null);
   const apiBase = getOptionsApiBase();
 
   const selectedRows = useMemo(
@@ -87,23 +87,28 @@ export default function RealOptionsPanel({ form, onUseComparisonRows, onChainFet
   }
 
   useEffect(() => {
-    if (provider !== 'marketdata' || !apiBase) return;
-    const key = `${ticker}|${provider}`;
-    if (autoFetchedRef.current.has(key)) return;
-    autoFetchedRef.current.add(key);
-
+    if (provider !== 'marketdata' || !apiBase || !ticker) return;
+    const key = `${ticker}|${provider}|${apiBase}`;
+    if (autoFetchKeyRef.current === key) return;
+    autoFetchKeyRef.current = key;
+    let cancelled = false;
     (async () => {
       setAutoLoading(true);
-      const payload = await runFetchFlow({ currentTicker: ticker, currentExpiration: expiration, currentProvider: provider });
-      if (payload && autoApply) {
-        const rows = selectPutsForComparison(payload.puts || [], form.support, 5, form.currentPrice);
-        if (rows.length > 0) {
-          onUseComparisonRows(rows);
-          setChainApplied(true);
+      setError('');
+      try {
+        const payload = await runFetchFlow({ currentTicker: ticker, currentExpiration: expiration, currentProvider: provider });
+        if (!cancelled && payload && autoApply) {
+          const rows = selectPutsForComparison(payload.puts || [], form.support, 5, form.currentPrice);
+          if (rows.length > 0) {
+            onUseComparisonRows(rows);
+            setChainApplied(true);
+          }
         }
+      } finally {
+        if (!cancelled) setAutoLoading(false);
       }
-      setAutoLoading(false);
     })();
+    return () => { cancelled = true; autoFetchKeyRef.current = null; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticker, provider, apiBase]);
 
@@ -247,7 +252,7 @@ export default function RealOptionsPanel({ form, onUseComparisonRows, onChainFet
       {chain && (
         <div className="success-state">
           <div>
-            <strong>{chain.puts.length} puts fetched</strong>
+            <strong>{(chain.puts || []).length} puts fetched</strong>
             {selectedRows.length > 0 ? (
               <span>{selectedRows.length} candidates match the delta/DTE filters.</span>
             ) : (
