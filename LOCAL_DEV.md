@@ -165,3 +165,17 @@ npm run update:marketdata
 | `vite.pid` | Vite process PID |
 | `marketdata-dev.log` | Combined stdout/stderr log |
 
+
+## Broker Quote Override Local Testing
+
+When MarketData.app looks delayed versus E*Trade/Fidelity:
+
+1. Fetch MarketData candidates locally.
+2. Click `Use in Comparison Table`.
+3. Enter broker option-chain bid/ask in the row-level `Broker Bid` and `Broker Ask` fields.
+4. Confirm the row shows `Broker Override` and `Using broker override`.
+5. Use the recomputed reward/risk and position sizing as a personal workflow check only.
+
+MarketData is for screening. Broker bid/ask is authoritative for order entry. The app does not place orders.
+
+If the underlying price differs materially, enter the broker observed price in Quote Diagnostics and click `Use broker price as Current Price`.

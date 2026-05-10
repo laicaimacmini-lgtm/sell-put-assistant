@@ -21,6 +21,7 @@ export function normalizePutForComparison(put, fallbackSupport) {
     id: `real-${put.symbol || `${put.strike}-${absDelta || 'no-delta'}`}`,
     strike: put.strike,
     premium: put.mid,
+    mid: put.mid,
     delta: absDelta,
     dte: put.dte,
     support: fallbackSupport,
@@ -31,6 +32,8 @@ export function normalizePutForComparison(put, fallbackSupport) {
     premiumSource: put.premiumSource ?? null,
     dataQuality: put.dataQuality ?? null,
     quoteDate: put.quoteDate ?? null,
+    brokerBid: '',
+    brokerAsk: '',
   };
 }
 

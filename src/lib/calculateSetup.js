@@ -211,6 +211,32 @@ export function getRowRiskFlags(setup) {
   return flags;
 }
 
+export function getBrokerMid(row) {
+  const bid = toNumber(row.brokerBid);
+  const ask = toNumber(row.brokerAsk);
+  if (bid > 0 && ask > 0 && ask >= bid) return (bid + ask) / 2;
+  return null;
+}
+
+export function getEffectivePremium(row) {
+  const brokerMid = getBrokerMid(row);
+  if (brokerMid !== null) {
+    return {
+      brokerMid,
+      brokerOverrideEnabled: true,
+      effectivePremium: brokerMid,
+      effectivePremiumSource: 'broker override',
+    };
+  }
+
+  return {
+    brokerMid: null,
+    brokerOverrideEnabled: false,
+    effectivePremium: toNumber(row.premium),
+    effectivePremiumSource: row.premiumSource || 'marketdata',
+  };
+}
+
 export function scoreCandidate(setup) {
   const deltaOk = setup.delta >= 0.15 && setup.delta <= 0.3;
   const cashOk = setup.cashUsage <= 0.2 && setup.cashRequired <= setup.cash;
@@ -231,6 +257,8 @@ export function scoreCandidate(setup) {
   if (setup.cashRequired > setup.cash) score -= 100;
   if (setup.delta > 0.4) score -= 30;
   if (setup.rewardRisk < 1.5) score -= 35;
+  if (setup.brokerOverrideEnabled) score += 6;
+  if (!setup.brokerOverrideEnabled && setup.dataQuality === 'last_fallback') score -= 18;
 
   return { score, isPerfect: rrOk && deltaOk && cashOk && strikeOk && dteOk };
 }
@@ -247,18 +275,36 @@ function sortRows(rows, sortBy) {
 
 export function compareStrikes(baseInput, rows, sortBy = 'rewardRisk') {
   const calculatedRows = rows.map((row, index) => {
+    const premiumMeta = getEffectivePremium(row);
+    const enrichedRow = {
+      ...row,
+      ...premiumMeta,
+      mid: row.mid ?? row.premium,
+      brokerBid: row.brokerBid ?? '',
+      brokerAsk: row.brokerAsk ?? '',
+    };
     const setup = calculateSetup({
       ...baseInput,
-      ...row,
+      ...enrichedRow,
+      premium: premiumMeta.effectivePremium,
       support: row.support === '' || row.support == null ? baseInput.support : row.support,
       contracts: row.contracts === '' || row.contracts == null ? 1 : row.contracts,
     });
-    const balance = scoreCandidate(setup);
+    const setupWithMeta = {
+      ...setup,
+      brokerMid: premiumMeta.brokerMid,
+      brokerOverrideEnabled: premiumMeta.brokerOverrideEnabled,
+      effectivePremium: premiumMeta.effectivePremium,
+      effectivePremiumSource: premiumMeta.effectivePremiumSource,
+      dataQuality: row.dataQuality ?? null,
+      premiumSource: row.premiumSource ?? null,
+    };
+    const balance = scoreCandidate(setupWithMeta);
     return {
       id: row.id || `candidate-${index + 1}`,
-      source: row,
-      ...setup,
-      riskFlags: getRowRiskFlags(setup),
+      source: enrichedRow,
+      ...setupWithMeta,
+      riskFlags: getRowRiskFlags(setupWithMeta),
       balanceScore: balance.score,
       isPerfectCandidate: balance.isPerfect,
     };

@@ -197,3 +197,17 @@ Webull OpenAPI has been evaluated as a possible provider for fresher options bid
 - The project must not call Webull trading/order endpoints for quote discovery.
 
 Evaluation details: `docs/WEBULL_PROVIDER_EVAL.md`.
+
+
+## Broker Quote Override (2026-05-10)
+
+Broker Quote Override is now supported in the Compare Put Strikes table.
+
+- MarketData.app remains useful for expiration, strike, delta, IV, open interest, and volume screening.
+- Broker bid/ask entered manually from E*Trade/Fidelity/Other is authoritative for order-sensitive calculations.
+- When both Broker Bid and Broker Ask are greater than zero, the app calculates broker mid and uses it as `effectivePremium`.
+- Max profit, return on cash, annualized return, breakeven, and reward/risk in comparison rows use `effectivePremium`.
+- Original MarketData bid/ask/mid remains visible for transparency.
+- Rows warn when broker ask is below bid or when broker quote differs materially from MarketData.
+- Quote Diagnostics supports using broker observed underlying price as Current Price.
+- No broker API, trading endpoint, or automated order placement is connected.

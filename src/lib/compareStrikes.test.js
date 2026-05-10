@@ -62,4 +62,40 @@ describe('compareStrikes', () => {
     expect(result.rows[0].setupRating).toBe('Poor Risk/Reward');
     expect(result.rows[0].riskFlags.map((flag) => flag.label)).toContain('Avoid / poor R:R');
   });
+
+  it('uses broker bid/ask midpoint as effective premium for calculations', () => {
+    const result = compareStrikes(initialForm, [{
+      id: 'broker-row', strike: 497.5, premium: 12.52, delta: 0.22, dte: 45, support: 490, contracts: 1,
+      bid: 12, ask: 13.04, mid: 12.52, premiumSource: 'bid_ask', dataQuality: 'bid_ask',
+      brokerBid: 7, brokerAsk: 10.55,
+    }]);
+    const row = result.rows[0];
+    expect(row.brokerMid).toBeCloseTo(8.775, 3);
+    expect(row.effectivePremium).toBeCloseTo(8.775, 3);
+    expect(row.effectivePremiumSource).toBe('broker override');
+    expect(row.maxProfit).toBeCloseTo(877.5, 1);
+    expect(row.returnOnCash).toBeCloseTo(877.5 / 49750, 5);
+    expect(row.rewardRisk).toBeCloseTo(8.775 / Math.max(0.01, 497.5 - 8.775 - 490), 3);
+  });
+
+  it('falls back to MarketData premium after broker override is cleared', () => {
+    const result = compareStrikes(initialForm, [{
+      id: 'market-row', strike: 497.5, premium: 12.52, delta: 0.22, dte: 45, support: 480, contracts: 1,
+      premiumSource: 'bid_ask', dataQuality: 'bid_ask', brokerBid: '', brokerAsk: '',
+    }]);
+    const row = result.rows[0];
+    expect(row.brokerOverrideEnabled).toBe(false);
+    expect(row.effectivePremium).toBe(12.52);
+    expect(row.maxProfit).toBe(1252);
+  });
+
+  it('can choose a broker override row as the best balanced setup', () => {
+    const result = compareStrikes(initialForm, [
+      { id: 'broker-row', strike: 240, premium: 1.1, delta: 0.22, dte: 45, support: 235, contracts: 1, dataQuality: 'bid_ask', brokerBid: 4.1, brokerAsk: 4.3 },
+      { id: 'fallback-row', strike: 240, premium: 4.2, delta: 0.22, dte: 45, support: 235, contracts: 1, dataQuality: 'last_fallback' },
+    ]);
+    expect(result.bestId).toBe('broker-row');
+    expect(result.rows.find((row) => row.id === 'broker-row').brokerOverrideEnabled).toBe(true);
+  });
+
 });

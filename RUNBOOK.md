@@ -319,3 +319,24 @@ Before implementing real Webull calls, confirm with Webull support:
 4. Required OpenAPI approval and separate market data subscription.
 
 See `docs/WEBULL_PROVIDER_EVAL.md` for the current research notes.
+
+
+## Broker Quote Override Workflow
+
+Use MarketData.app to screen candidates, then use broker quotes for order-sensitive calculations.
+
+Recommended workflow:
+
+1. Run the local MarketData flow and fetch put chain candidates.
+2. Click `Use in Comparison Table`.
+3. Open E*Trade/Fidelity/your broker option chain.
+4. Copy the live put bid and ask into `Broker Bid` and `Broker Ask` for the matching strike.
+5. The app computes Broker Mid and uses it as `effectivePremium` for max profit, return on cash, annualized return, and reward/risk.
+6. If broker quote is stale, crossed, or differs from MarketData, treat the broker chain as authoritative for order entry and re-check before placing any order manually.
+
+Important:
+
+- Broker quote is authoritative for order entry.
+- Use limit orders only.
+- This app never places trades and never connects to broker trading/order APIs.
+- MarketData can be delayed or stale, so do not use MarketData premium as the final limit price without broker confirmation.

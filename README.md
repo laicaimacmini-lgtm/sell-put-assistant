@@ -229,3 +229,12 @@ Current conclusion:
 A safe `webull` provider scaffold exists only to return clear credential/scaffold errors. It does not call trading/order endpoints and does not send credentials to the frontend.
 
 See `docs/WEBULL_PROVIDER_EVAL.md` for details.
+
+
+## Broker Quote Override
+
+MarketData.app can be useful for screening expirations, strikes, delta, IV, open interest, and volume, but quotes may be delayed or stale. For order-sensitive calculations, enter the broker bid/ask manually in the comparison table.
+
+When Broker Bid and Broker Ask are both provided, the app uses broker mid as `effectivePremium` for max profit, return on cash, annualized return, breakeven, and reward/risk. Original MarketData bid/ask/mid stays visible for transparency.
+
+Broker quote is authoritative for order entry. This tool does not connect to broker trading APIs, does not place orders, and remains a personal education/workflow helper.

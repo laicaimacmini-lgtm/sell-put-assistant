@@ -331,6 +331,41 @@ describe('App', () => {
     expect(screen.queryByText(/Comparison rows look stale/i)).not.toBeInTheDocument();
   });
 
+
+  it('uses broker bid and ask override for comparison calculations', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const premiumInput = screen.getByLabelText(/Premium smh-240/i);
+    await user.clear(premiumInput);
+    await user.type(premiumInput, '12.52');
+
+    await user.clear(screen.getByLabelText(/Broker Bid smh-240/i));
+    await user.type(screen.getByLabelText(/Broker Bid smh-240/i), '7');
+    await user.clear(screen.getByLabelText(/Broker Ask smh-240/i));
+    await user.type(screen.getByLabelText(/Broker Ask smh-240/i), '10.55');
+
+    expect(screen.getAllByText(/Broker Override/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Using broker override/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/\$8\.775/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/\$878/i).length).toBeGreaterThan(0);
+  });
+
+  it('shows broker ask warning and can clear override', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.clear(screen.getByLabelText(/Broker Bid smh-240/i));
+    await user.type(screen.getByLabelText(/Broker Bid smh-240/i), '10');
+    await user.clear(screen.getByLabelText(/Broker Ask smh-240/i));
+    await user.type(screen.getByLabelText(/Broker Ask smh-240/i), '7');
+
+    expect(screen.getByText(/Broker ask should be greater than bid/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /clear override/i }));
+    expect(screen.getByLabelText(/Broker Bid smh-240/i)).toHaveDisplayValue('');
+    expect(screen.getByLabelText(/Broker Ask smh-240/i)).toHaveDisplayValue('');
+  });
+
   it('shows target quick fill buttons', () => {
     render(<App />);
     expect(screen.getByRole('button', { name: /\+3%/i })).toBeInTheDocument();
@@ -404,6 +439,35 @@ describe('App', () => {
     // default provider is mock when apiBase is empty
     await new Promise((r) => setTimeout(r, 100));
     expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+
+  it('uses broker observed price as current price from quote diagnostics', async () => {
+    const user = userEvent.setup();
+    globalThis.__SELL_PUT_OPTIONS_API_BASE__ = 'http://localhost:8787';
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ticker: 'SMH', expiration: '2026-06-19', source: 'marketdata',
+        lastUpdated: new Date().toISOString(), quoteDate: new Date().toISOString(),
+        underlyingPrice: 540.1, underlyingPriceSource: 'marketdata',
+        puts: [
+          { symbol: 'SMH-M1', strike: 497.5, bid: 12, ask: 13.04, mid: 12.52, last: 12.52, delta: -0.22, iv: 0.34, openInterest: 1200, volume: 300, dte: 45, dataQuality: 'bid_ask' },
+        ],
+      }),
+    });
+
+    render(<App />);
+    await user.selectOptions(screen.getByLabelText(/options provider/i), 'marketdata');
+    await user.click(screen.getByRole('button', { name: /fetch put chain/i }));
+    await screen.findByText(/Updated current price from MarketData/i);
+
+    const brokerPrice = screen.getByLabelText(/Broker observed underlying price/i);
+    await user.clear(brokerPrice);
+    await user.type(brokerPrice, '568.05');
+    expect(screen.getByText(/Broker quote is authoritative for order entry/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /use broker price as current price/i }));
+    expect(screen.getByLabelText(/Current Price/i)).toHaveDisplayValue('568.05');
   });
 
   it('shows Refresh MarketData button after chain is fetched', async () => {

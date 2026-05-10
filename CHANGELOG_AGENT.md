@@ -340,3 +340,23 @@ Safety:
 
 - No Webull token or secret was printed or committed.
 - No trading/order endpoint was connected.
+
+
+## 2026-05-10 — Add Broker Quote Override
+
+Completed:
+
+- Added Broker Bid / Broker Ask inputs per comparison row.
+- Added Broker Mid calculation and Broker Override badge.
+- Added `effectivePremium` and `effectivePremiumSource` logic so comparison-row reward/risk, max profit, return on cash, and annualized return use broker mid when bid/ask are supplied.
+- Preserved original MarketData bid/ask/mid display for transparency.
+- Added row warnings for crossed broker quote and material broker-vs-MarketData quote differences.
+- Added `Clear Override` control to return to MarketData premium.
+- Added Quote Diagnostics button to use broker observed underlying price as Current Price.
+- Added tests for broker mid, effective premium, reward/risk recalculation, UI warnings, clear override, and broker observed price.
+
+Safety:
+
+- No tokens printed or committed.
+- No broker trading/order API added.
+- Broker quote is explicitly treated as manually entered and authoritative for order entry.

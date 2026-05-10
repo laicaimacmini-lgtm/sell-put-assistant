@@ -28,7 +28,7 @@ function defaultExpiration() {
   return date.toISOString().slice(0, 10);
 }
 
-export default function RealOptionsPanel({ form, onUseComparisonRows, onChainFetched, comparisonRowsSource }) {
+export default function RealOptionsPanel({ form, onUseComparisonRows, onChainFetched, onUseBrokerPrice, comparisonRowsSource }) {
   const [ticker, setTicker] = useState(form.ticker || 'SMH');
   const [expiration, setExpiration] = useState(defaultExpiration());
   const [provider, setProvider] = useState(() => getOptionsApiBase() ? 'marketdata' : 'mock');
@@ -57,7 +57,8 @@ export default function RealOptionsPanel({ form, onUseComparisonRows, onChainFet
   }
 
   const brokerPriceNum = parseFloat(brokerPrice);
-  const brokerMismatch = chain?.underlyingPrice != null && Number.isFinite(brokerPriceNum) && brokerPriceNum > 0
+  const validBrokerPrice = Number.isFinite(brokerPriceNum) && brokerPriceNum > 0;
+  const brokerMismatch = chain?.underlyingPrice != null && validBrokerPrice
     && Math.abs(brokerPriceNum - chain.underlyingPrice) / chain.underlyingPrice > 0.01;
 
   const selectedRows = useMemo(
@@ -298,6 +299,14 @@ export default function RealOptionsPanel({ form, onUseComparisonRows, onChainFet
                 min="0"
               />
             </label>
+            <button type="button" className="fetch-button secondary broker-price-button" onClick={() => onUseBrokerPrice?.(brokerPriceNum)} disabled={!validBrokerPrice}>
+              Use broker price as Current Price
+            </button>
+            {validBrokerPrice && (
+              <div className="broker-authoritative-note">
+                Using broker observed price for order-sensitive calculations. Broker quote is authoritative for order entry.
+              </div>
+            )}
             {brokerMismatch && (
               <div className="broker-mismatch-warning">
                 <AlertTriangle size={14} /> Broker price ${Number(brokerPriceNum).toFixed(2)} differs from MarketData ${Number(chain.underlyingPrice).toFixed(2)} by more than 1%. Use your broker&apos;s live price for decisions.

@@ -38,7 +38,7 @@ const numberFields = new Set([
   'cash',
   'contracts',
 ]);
-const comparisonFields = new Set(['strike', 'premium', 'delta', 'dte', 'support', 'contracts']);
+const comparisonFields = new Set(['strike', 'premium', 'delta', 'dte', 'support', 'contracts', 'brokerBid', 'brokerAsk']);
 
 function currency(value, digits = 2) {
   return new Intl.NumberFormat('en-US', {
@@ -66,6 +66,35 @@ function Field({ label, name, value, onChange, type = 'number', step = '0.01' })
   );
 }
 
+
+function formatPremiumSource(source) {
+  const labels = {
+    bid_ask: 'bid-ask midpoint',
+    bid_ask_midpoint: 'bid-ask midpoint',
+    last_fallback: 'last fallback',
+    mid_only: 'mid quote',
+    marketdata: 'marketdata',
+    'broker override': 'broker override',
+  };
+  return labels[source] || source || 'marketdata';
+}
+
+function BrokerQuoteWarning({ row }) {
+  const bid = Number(row.source.brokerBid);
+  const ask = Number(row.source.brokerAsk);
+  if (bid > 0 && ask > 0 && ask < bid) {
+    return <div className="row-warning">Broker ask should be greater than bid.</div>;
+  }
+  if (row.brokerOverrideEnabled && row.source.bid > 0 && row.source.ask > 0) {
+    const brokerMid = Number(row.brokerMid);
+    const marketMid = Number(row.source.mid ?? row.source.premium);
+    if (marketMid > 0 && Math.abs(brokerMid - marketMid) / marketMid > 0.15) {
+      return <div className="row-warning">Broker quote differs from MarketData. Broker quote will be used for calculations.</div>;
+    }
+  }
+  return null;
+}
+
 function RuleCard({ icon: Icon, title, rule }) {
   return (
     <div className="rule-card">
@@ -90,11 +119,11 @@ function Metric({ label, value, accent }) {
   );
 }
 
-function ComparisonInput({ label, rowId, name, value, onChange, step = '0.01' }) {
+function ComparisonInput({ label, rowId, name, value, onChange, step = '0.01', className = 'table-input' }) {
   return (
     <input
       aria-label={`${label} ${rowId}`}
-      className="table-input"
+      className={className}
       type="number"
       step={step}
       value={value}
@@ -148,6 +177,9 @@ function StrikeComparison({ form, rows, sortBy, onSortChange, onRowChange, onAdd
               <th>Candidate</th>
               <th className="numeric">Strike</th>
               <th className="numeric">Premium</th>
+              <th className="numeric">Broker Bid</th>
+              <th className="numeric">Broker Ask</th>
+              <th className="numeric">Broker Mid</th>
               <th className="numeric">Delta</th>
               <th className="numeric">DTE</th>
               <th className="numeric">Support</th>
@@ -177,13 +209,27 @@ function StrikeComparison({ form, rows, sortBy, onSortChange, onRowChange, onAdd
                     </div>
                   </td>
                   <td><ComparisonInput label="Strike" rowId={row.id} name="strike" value={row.source.strike} onChange={onRowChange} /></td>
-                  <td>
-                    <ComparisonInput label="Premium" rowId={row.id} name="premium" value={row.source.premium} onChange={onRowChange} />
-                    {row.source.bid > 0 && row.source.ask > 0 && (
-                      <div className="bid-ask-hint">Bid {row.source.bid} / Ask {row.source.ask}</div>
-                    )}
-                    {row.source.premiumSource === 'last_fallback' && (
+                  <td className="premium-cell">
+                    <div className="effective-premium"><span>Effective Premium</span><strong>{currency(row.effectivePremium)}</strong></div>
+                    <div className="premium-source-line">Source: {formatPremiumSource(row.effectivePremiumSource)}</div>
+                    <div className="marketdata-line">MarketData: Bid {row.source.bid ?? '—'} / Ask {row.source.ask ?? '—'} / Mid {row.source.mid ?? row.source.premium ?? '—'}</div>
+                    {row.brokerOverrideEnabled && <Badge tone="good" className="broker-override-badge">Broker Override</Badge>}
+                    {row.source.premiumSource === 'last_fallback' && !row.brokerOverrideEnabled && (
                       <span className="last-fallback-badge">Last fallback</span>
+                    )}
+                    {!row.brokerOverrideEnabled && <div className="confirm-broker-note">Confirm broker bid/ask before using this setup.</div>}
+                    <ComparisonInput label="Premium" rowId={row.id} name="premium" value={row.source.premium} onChange={onRowChange} className="table-input visually-compact-input" />
+                    <BrokerQuoteWarning row={row} />
+                  </td>
+                  <td><ComparisonInput label="Broker Bid" rowId={row.id} name="brokerBid" value={row.source.brokerBid ?? ''} onChange={onRowChange} /></td>
+                  <td><ComparisonInput label="Broker Ask" rowId={row.id} name="brokerAsk" value={row.source.brokerAsk ?? ''} onChange={onRowChange} /></td>
+                  <td className="numeric">
+                    {row.brokerMid != null ? currency(row.brokerMid, 3) : '—'}
+                    {row.brokerOverrideEnabled && <div className="broker-source-note">Using broker override</div>}
+                    {(row.source.brokerBid || row.source.brokerAsk) && (
+                      <button type="button" className="clear-override-button" onClick={() => { onRowChange(row.id, 'brokerBid', ''); onRowChange(row.id, 'brokerAsk', ''); }}>
+                        Clear Override
+                      </button>
                     )}
                   </td>
                   <td><ComparisonInput label="Delta" rowId={row.id} name="delta" value={row.source.delta} onChange={onRowChange} /></td>
@@ -253,7 +299,10 @@ export default function App() {
         id: `candidate-${Date.now()}`,
         strike: form.strike,
         premium: form.premium,
+        mid: form.premium,
         delta: form.delta,
+        brokerBid: '',
+        brokerAsk: '',
         dte: form.dte,
         support: form.support,
         contracts: 1,
@@ -280,6 +329,13 @@ export default function App() {
   function handleChainFetched({ underlyingPrice }) {
     if (underlyingPrice != null && Number.isFinite(underlyingPrice)) {
       setForm((current) => ({ ...current, currentPrice: underlyingPrice }));
+    }
+  }
+
+  function useBrokerObservedPrice(price) {
+    const parsed = Number(price);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      setForm((current) => ({ ...current, currentPrice: parsed }));
     }
   }
 
@@ -419,7 +475,7 @@ export default function App() {
         </section>
       </div>
 
-      <RealOptionsPanel form={form} onUseComparisonRows={useRealOptionsRows} onChainFetched={handleChainFetched} comparisonRowsSource={comparisonRowsSource} />
+      <RealOptionsPanel form={form} onUseComparisonRows={useRealOptionsRows} onChainFetched={handleChainFetched} onUseBrokerPrice={useBrokerObservedPrice} comparisonRowsSource={comparisonRowsSource} />
 
       {comparisonStale && (
         <div className="comparison-stale-warning">

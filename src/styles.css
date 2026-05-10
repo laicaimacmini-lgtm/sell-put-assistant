@@ -379,7 +379,7 @@ footer { justify-content: center; padding: 26px 0 0; }
 
 .comparison-table {
   width: 100%;
-  min-width: 1420px;
+  min-width: 1740px;
   border-collapse: collapse;
   font-size: 0.84rem;
 }
@@ -798,4 +798,69 @@ footer { justify-content: center; padding: 26px 0 0; }
   border-radius: 4px;
   padding: 0 0.3rem;
   margin-top: 0.15rem;
+}
+
+/* ── Broker quote override ─────────────────────────────────────────────── */
+.premium-cell {
+  min-width: 220px;
+}
+.effective-premium {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: #cbd5e1;
+  font-size: 0.76rem;
+}
+.effective-premium strong {
+  color: #f8fafc;
+  font-size: 0.9rem;
+}
+.premium-source-line,
+.marketdata-line,
+.confirm-broker-note,
+.broker-source-note {
+  margin-top: 0.18rem;
+  color: #94a3b8;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+.confirm-broker-note {
+  color: #fbbf24;
+}
+.broker-source-note {
+  color: #86efac;
+}
+.broker-override-badge {
+  margin-top: 0.3rem;
+}
+.row-warning {
+  margin-top: 0.35rem;
+  max-width: 210px;
+  color: #fca5a5;
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+.clear-override-button {
+  margin-top: 0.35rem;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.74);
+  color: #cbd5e1;
+  font-size: 0.72rem;
+  padding: 0.2rem 0.4rem;
+}
+.clear-override-button:hover {
+  border-color: rgba(248, 113, 113, 0.4);
+  color: #fecaca;
+}
+.visually-compact-input {
+  margin-top: 0.35rem;
+}
+.broker-price-button {
+  width: fit-content;
+  padding: 0 0.75rem;
+}
+.broker-authoritative-note {
+  color: #86efac;
+  font-size: 0.8rem;
 }
