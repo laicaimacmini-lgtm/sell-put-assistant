@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDays, Cloud, Database, Loader2, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CalendarDays, Cloud, Database, Loader2, RefreshCw } from 'lucide-react';
 import {
   fetchOptionsChain,
   fetchOptionsExpirations,
@@ -41,8 +41,23 @@ export default function RealOptionsPanel({ form, onUseComparisonRows, onChainFet
   const [lastUpdated, setLastUpdated] = useState('');
   const [autoLoading, setAutoLoading] = useState(false);
   const [chainApplied, setChainApplied] = useState(false);
+  const [brokerPrice, setBrokerPrice] = useState('');
   const autoFetchKeyRef = useRef(null);
   const apiBase = getOptionsApiBase();
+
+  function formatQuoteDate(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true, timeZoneName: 'short' });
+  }
+
+  function isStaleQuote(iso) {
+    if (!iso) return false;
+    return Date.now() - new Date(iso).getTime() > 4 * 60 * 60 * 1000;
+  }
+
+  const brokerPriceNum = parseFloat(brokerPrice);
+  const brokerMismatch = chain?.underlyingPrice != null && Number.isFinite(brokerPriceNum) && brokerPriceNum > 0
+    && Math.abs(brokerPriceNum - chain.underlyingPrice) / chain.underlyingPrice > 0.01;
 
   const selectedRows = useMemo(
     () => selectPutsForComparison(chain?.puts || [], form.support, 5, form.currentPrice),
@@ -248,6 +263,47 @@ export default function RealOptionsPanel({ form, onUseComparisonRows, onChainFet
       {priceSyncMsg && <div className="price-sync-msg">{priceSyncMsg}</div>}
       {expirations.length > 0 && <div className="provider-note">{expirations.length} expirations available from {provider}.</div>}
       {lastUpdated && <div className="last-updated">Last updated: {lastUpdated}</div>}
+
+      {chain?.source === 'marketdata' && (
+        <div className="quote-diagnostics">
+          <strong>MarketData Quote Diagnostics</strong>
+          <div>
+            Underlying: {chain.underlyingPrice != null ? `$${Number(chain.underlyingPrice).toFixed(2)}` : '—'}
+            {' · '}
+            Data as of: {formatQuoteDate(chain.quoteDate)}
+          </div>
+          {isStaleQuote(chain.quoteDate) && (
+            <div className="stale-warning">
+              <AlertTriangle size={14} /> Data may be delayed. Always confirm bid/ask with your broker before placing any trade.
+            </div>
+          )}
+          <div>
+            Valid bid/ask: {(chain.puts || []).filter(p => p.bid > 0 && p.ask > 0).length} /{' '}
+            {(chain.puts || []).length} puts ·{' '}
+            Last fallback: {(chain.puts || []).filter(p => p.dataQuality === 'last_fallback').length} ·{' '}
+            Invalid: {(chain.puts || []).filter(p => p.dataQuality === 'invalid').length}
+          </div>
+          <div className="broker-price-row">
+            <label className="field broker-price-field">
+              <span>Broker observed price</span>
+              <input
+                type="number"
+                aria-label="Broker observed underlying price"
+                placeholder={chain.underlyingPrice != null ? `MarketData: ${chain.underlyingPrice}` : 'e.g. 568.05'}
+                value={brokerPrice}
+                onChange={e => setBrokerPrice(e.target.value)}
+                step="0.01"
+                min="0"
+              />
+            </label>
+            {brokerMismatch && (
+              <div className="broker-mismatch-warning">
+                <AlertTriangle size={14} /> Broker price ${Number(brokerPriceNum).toFixed(2)} differs from MarketData ${Number(chain.underlyingPrice).toFixed(2)} by more than 1%. Use your broker&apos;s live price for decisions.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {chain && (
         <div className="success-state">

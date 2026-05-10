@@ -78,6 +78,13 @@ function midpointFrom({ bid, ask, last, mark }) {
   return last ?? mark ?? 0;
 }
 
+function dataQualityFrom({ bid, ask, mark, last }) {
+  if (bid > 0 && ask > 0) return 'bid_ask';
+  if (mark != null && mark > 0) return 'mid_only';
+  if (last != null && last > 0) return 'last_fallback';
+  return 'invalid';
+}
+
 function alphaVantageErrorMessage(data) {
   const message = data?.['Error Message'] || data?.Information || data?.Note || 'unknown error';
   if (/premium|endpoint|subscription|entitlement/i.test(message)) {
@@ -209,6 +216,7 @@ export function mapMarketDataPut(option, { expiration } = {}) {
   const mark = normalizeNumber(firstValue(option.mid, option.mark, option.midpoint), null);
   const optionExpiration = firstValue(option.expiration, option.expirationDate, option.expiration_date, expiration);
   const dte = normalizeNumber(firstValue(option.dte, option.daysToExpiration, option.days_to_expiration), calculateDte(optionExpiration));
+  const updatedUnix = normalizeNumber(firstValue(option.updated), null);
 
   return {
     symbol: firstValue(option.symbol, option.optionSymbol, option.option_symbol),
@@ -222,6 +230,9 @@ export function mapMarketDataPut(option, { expiration } = {}) {
     openInterest: normalizeNumber(firstValue(option.openInterest, option.open_interest, option.oi), 0),
     volume: normalizeNumber(option.volume, 0),
     dte: dte ?? 0,
+    premiumSource: dataQualityFrom({ bid, ask, mark, last }),
+    dataQuality: dataQualityFrom({ bid, ask, mark, last }),
+    quoteDate: updatedUnix !== null ? new Date(updatedUnix * 1000).toISOString() : null,
   };
 }
 
@@ -241,6 +252,7 @@ function extractMarketDataOptions(data) {
       dte: data.dte?.[index],
       expiration: data.expiration?.[index],
       side: data.side?.[index] ?? data.type?.[index],
+      updated: data.updated?.[index],
     }));
   }
   return normalizeOptionArray(data?.options ?? data?.data ?? data?.chain ?? data?.option);
@@ -304,7 +316,11 @@ async function fetchMarketDataOptionsChain({ ticker, expiration }) {
   const parsedUnderlying = normalizeNumber(rawUnderlying, null);
   if (parsedUnderlying !== null) { underlyingPrice = parsedUnderlying; underlyingPriceSource = 'marketdata'; }
 
-  return { ticker, expiration, source: 'marketdata', lastUpdated: new Date().toISOString(), underlyingPrice, underlyingPriceSource, puts };
+  const rawUpdated = Array.isArray(data?.updated) ? data.updated[0] : data?.updated;
+  const parsedUpdated = normalizeNumber(rawUpdated, null);
+  const quoteDate = parsedUpdated !== null ? new Date(parsedUpdated * 1000).toISOString() : null;
+
+  return { ticker, expiration, source: 'marketdata', lastUpdated: new Date().toISOString(), quoteDate, underlyingPrice, underlyingPriceSource, puts };
 }
 
 

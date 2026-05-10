@@ -32,6 +32,9 @@ Current latest functionality includes:
 - Balanced candidate highlighting that weighs reward/risk, delta, position size, strike vs support, and DTE.
 - Risk flags for poor reward/risk, aggressive delta, not enough cash, heavy size, and non-ideal DTE.
 
+- **NEW**: Quote diagnostics panel in MarketData fetch section: shows data-as-of timestamp, staleness warning (>4 hrs), bid_ask / last_fallback / invalid quality counts, and broker price mismatch input.
+- **NEW**: , , and  fields on every put from MarketData.app provider. Candidate selection prefers bid_ask quality and excludes invalid puts.
+- **NEW**: Bid/Ask hint shown in comparison table premium cell when real bid and ask are available; last-fallback badge shown when only last-price data is available.
 ## Deployment Status
 
 GitHub Actions automatic deployment is complete.

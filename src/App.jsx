@@ -177,7 +177,15 @@ function StrikeComparison({ form, rows, sortBy, onSortChange, onRowChange, onAdd
                     </div>
                   </td>
                   <td><ComparisonInput label="Strike" rowId={row.id} name="strike" value={row.source.strike} onChange={onRowChange} /></td>
-                  <td><ComparisonInput label="Premium" rowId={row.id} name="premium" value={row.source.premium} onChange={onRowChange} /></td>
+                  <td>
+                    <ComparisonInput label="Premium" rowId={row.id} name="premium" value={row.source.premium} onChange={onRowChange} />
+                    {row.source.bid > 0 && row.source.ask > 0 && (
+                      <div className="bid-ask-hint">Bid {row.source.bid} / Ask {row.source.ask}</div>
+                    )}
+                    {row.source.premiumSource === 'last_fallback' && (
+                      <span className="last-fallback-badge">Last fallback</span>
+                    )}
+                  </td>
                   <td><ComparisonInput label="Delta" rowId={row.id} name="delta" value={row.source.delta} onChange={onRowChange} /></td>
                   <td><ComparisonInput label="DTE" rowId={row.id} name="dte" value={row.source.dte} onChange={onRowChange} step="1" /></td>
                   <td><ComparisonInput label="Support" rowId={row.id} name="support" value={row.source.support} onChange={onRowChange} /></td>

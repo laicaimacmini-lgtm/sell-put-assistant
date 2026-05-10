@@ -26,6 +26,11 @@ export function normalizePutForComparison(put, fallbackSupport) {
     support: fallbackSupport,
     contracts: 1,
     sourceSymbol: put.symbol,
+    bid: put.bid ?? null,
+    ask: put.ask ?? null,
+    premiumSource: put.premiumSource ?? null,
+    dataQuality: put.dataQuality ?? null,
+    quoteDate: put.quoteDate ?? null,
   };
 }
 
@@ -45,15 +50,18 @@ function scoreFallbackPut(put, fallbackSupport, currentPrice) {
 export function selectPutsForComparison(puts = [], fallbackSupport, maxRows = 5, currentPrice) {
   const candidates = puts.filter((put) => {
     const dte = Number(put.dte);
-    return dte >= 21 && dte <= 60 && hasMarketQuote(put);
+    return dte >= 21 && dte <= 60 && hasMarketQuote(put) && put.dataQuality !== 'invalid';
   });
 
-  const deltaQualified = candidates.filter((put) => {
+  const bidAskCandidates = candidates.filter((put) => put.dataQuality === 'bid_ask' || put.bid > 0 && put.ask > 0);
+  const qualifiedPool = bidAskCandidates.length > 0 ? bidAskCandidates : candidates;
+
+  const deltaQualified = qualifiedPool.filter((put) => {
     const absDelta = Math.abs(Number(put.delta));
     return Number.isFinite(absDelta) && absDelta >= 0.15 && absDelta <= 0.3;
   });
 
-  const selected = (deltaQualified.length > 0 ? deltaQualified : candidates)
+  const selected = (deltaQualified.length > 0 ? deltaQualified : qualifiedPool)
     .sort((a, b) => {
       if (deltaQualified.length > 0) {
         return Math.abs(Number(b.delta)) - Math.abs(Number(a.delta)) || Number(b.strike) - Number(a.strike);

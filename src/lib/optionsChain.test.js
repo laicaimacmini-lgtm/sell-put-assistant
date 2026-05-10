@@ -39,4 +39,47 @@ describe('optionsChain selection', () => {
     expect(rows.every((row) => row.delta === '')).toBe(true);
   });
 
+
+  // ── dataQuality preference ───────────────────────────────────────────────────
+
+  it('prefers bid_ask candidates over last_fallback when both are in range', () => {
+    const puts = [
+      { symbol: 'A', strike: 240, bid: 3.0, ask: 3.4, mid: 3.2, delta: -0.22, dte: 45, dataQuality: 'bid_ask' },
+      { symbol: 'B', strike: 245, bid: 0, ask: 0, mid: 4.1, delta: -0.28, dte: 45, dataQuality: 'last_fallback' },
+    ];
+    const rows = selectPutsForComparison(puts, 235, 5);
+    expect(rows.map((r) => r.sourceSymbol)).toContain('A');
+    // last_fallback included only if no bid_ask candidates are available
+    expect(rows.find((r) => r.sourceSymbol === 'B')).toBeUndefined();
+  });
+
+  it('returns empty when all puts have bid=0 and ask=0 (hasMarketQuote gate)', () => {
+    const puts = [
+      { symbol: 'A', strike: 240, bid: 0, ask: 0, mid: 3.2, delta: -0.22, dte: 45, dataQuality: 'last_fallback' },
+    ];
+    const rows = selectPutsForComparison(puts, 235, 5);
+    expect(rows).toHaveLength(0);
+  });
+
+  it('excludes invalid dataQuality puts from selection', () => {
+    const puts = [
+      { symbol: 'A', strike: 240, bid: 0, ask: 0, mid: 0, delta: -0.22, dte: 45, dataQuality: 'invalid' },
+      { symbol: 'B', strike: 245, bid: 3.0, ask: 3.4, mid: 3.2, delta: -0.28, dte: 45, dataQuality: 'bid_ask' },
+    ];
+    const rows = selectPutsForComparison(puts, 235, 5);
+    expect(rows.find((r) => r.sourceSymbol === 'A')).toBeUndefined();
+    expect(rows.find((r) => r.sourceSymbol === 'B')).toBeDefined();
+  });
+
+  it('passes through bid, ask, premiumSource, dataQuality, quoteDate fields', () => {
+    const puts = [
+      { symbol: 'A', strike: 240, bid: 3.0, ask: 3.4, mid: 3.2, delta: -0.22, dte: 45, dataQuality: 'bid_ask', premiumSource: 'bid_ask', quoteDate: '2026-05-07T20:00:00.000Z' },
+    ];
+    const rows = selectPutsForComparison(puts, 235, 5);
+    expect(rows[0].bid).toBe(3.0);
+    expect(rows[0].ask).toBe(3.4);
+    expect(rows[0].dataQuality).toBe('bid_ask');
+    expect(rows[0].premiumSource).toBe('bid_ask');
+    expect(rows[0].quoteDate).toBe('2026-05-07T20:00:00.000Z');
+  });
 });

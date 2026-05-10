@@ -360,4 +360,55 @@ describe('optionsProvider', () => {
     expect(Number.isNaN(result.underlyingPrice)).toBe(false);
   });
 
+
+  // ── dataQuality / premiumSource / quoteDate ─────────────────────────────────
+
+  it('mapMarketDataPut returns premiumSource bid_ask when bid and ask are positive', () => {
+    const result = mapMarketDataPut({ optionSymbol: 'X', side: 'put', strike: '100', bidPrice: '2.00', askPrice: '2.40', lastPrice: '2.10', delta: '-0.25', impliedVolatility: '0.35', oi: '10', volume: '5', dte: '30', updated: String(1778184000) });
+    expect(result.premiumSource).toBe('bid_ask');
+    expect(result.dataQuality).toBe('bid_ask');
+  });
+
+  it('mapMarketDataPut returns premiumSource last_fallback when bid/ask are zero', () => {
+    const result = mapMarketDataPut({ optionSymbol: 'X', side: 'put', strike: '100', bidPrice: '0', askPrice: '0', lastPrice: '2.10', delta: '-0.25', impliedVolatility: '0.35', oi: '10', volume: '5', dte: '30' });
+    expect(result.premiumSource).toBe('last_fallback');
+    expect(result.dataQuality).toBe('last_fallback');
+  });
+
+  it('mapMarketDataPut returns premiumSource invalid when bid/ask/last are all absent', () => {
+    const result = mapMarketDataPut({ optionSymbol: 'X', side: 'put', strike: '100', bidPrice: '0', askPrice: '0', lastPrice: '0', delta: '-0.25', impliedVolatility: '0.35', oi: '10', volume: '5', dte: '30' });
+    expect(result.premiumSource).toBe('invalid');
+    expect(result.dataQuality).toBe('invalid');
+  });
+
+  it('mapMarketDataPut includes quoteDate ISO string when updated unix is provided', () => {
+    const unix = 1778184000; // 2026-05-07T20:00:00.000Z
+    const result = mapMarketDataPut({ optionSymbol: 'X', side: 'put', strike: '100', bidPrice: '1.00', askPrice: '1.50', lastPrice: '1.20', delta: '-0.2', impliedVolatility: '0.3', oi: '5', volume: '2', dte: '40', updated: String(unix) });
+    expect(result.quoteDate).toBe(new Date(unix * 1000).toISOString());
+  });
+
+  it('mapMarketDataPut quoteDate is null when updated is absent', () => {
+    const result = mapMarketDataPut({ optionSymbol: 'X', side: 'put', strike: '100', bidPrice: '1.00', askPrice: '1.50', lastPrice: '1.20', delta: '-0.2', impliedVolatility: '0.3', oi: '5', volume: '2', dte: '40' });
+    expect(result.quoteDate).toBeNull();
+  });
+
+  it('fetchOptionsChain includes top-level quoteDate from MarketData.app updated array', async () => {
+    vi.stubEnv('MARKETDATA_TOKEN', 'md-key');
+    vi.stubEnv('MARKETDATA_BASE_URL', 'https://marketdata.test/v1');
+    const unix = 1778184000;
+    mockProviderResponse({
+      optionSymbol: ['SMH260619P00240000'],
+      side: ['put'],
+      strike: [240],
+      bid: [3.0], ask: [3.4], last: [3.2],
+      delta: [-0.20], iv: [0.30],
+      openInterest: [800], volume: [200], dte: [45],
+      underlyingPrice: [257.5],
+      updated: [unix],
+    });
+
+    const result = await fetchOptionsChain({ ticker: 'SMH', expiration: '2026-06-19', provider: 'marketdata' });
+
+    expect(result.quoteDate).toBe(new Date(unix * 1000).toISOString());
+  });
 });

@@ -1,5 +1,31 @@
 # Agent Changelog
 
+## 2026-05-09 — Add MarketData quote diagnostics and data quality fields
+
+### Problem
+MarketData.app free plan returns end-of-day data (up to 2 trading days stale). Users had no visibility into when the data was last updated, leading to confusion when comparing tool quotes against live broker prices.
+
+### Root Cause
+The `updated` unix timestamp in MarketData.app columnar API responses was not being surfaced to the UI. Additionally, no bid/ask quality classification existed to distinguish live bid/ask quotes from last-price fallbacks.
+
+### Solution
+- Added `dataQualityFrom` helper in `server/optionsProvider.js` classifying each put as `bid_ask | mid_only | last_fallback | invalid`
+- Exposed `premiumSource`, `dataQuality`, `quoteDate` fields per put and top-level `quoteDate` on the chain response
+- `optionsChain.js` passes these fields through normalization and prefers `bid_ask` candidates in selection; excludes `invalid` puts
+- `RealOptionsPanel.jsx` shows a **Quote Diagnostics** section with data-as-of time, staleness warning (>4 hrs), quality counts, and broker observed price input with >1% mismatch warning
+- `App.jsx` comparison table premium cell shows bid/ask hint when available and `last-fallback` badge otherwise
+- 10 new tests added (83 total, was 73)
+
+### Files Changed
+- `server/optionsProvider.js` — dataQualityFrom, quoteDate extraction
+- `src/lib/optionsChain.js` — field passthrough, bid_ask preference
+- `src/components/RealOptionsPanel.jsx` — quote diagnostics UI
+- `src/App.jsx` — bid/ask hint, last-fallback badge
+- `src/styles.css` — new CSS classes
+- `server/optionsProvider.test.js` — 6 new tests
+- `src/lib/optionsChain.test.js` — 4 new tests
+
+
 ## 2026-05-09 — Fix auto-fetch to fire on page open
 
 ### Problem
