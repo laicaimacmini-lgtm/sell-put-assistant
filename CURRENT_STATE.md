@@ -23,7 +23,7 @@ Current latest functionality includes:
 - **NEW**: Support stale warning shown when support level is outside valid range (< 70% or > 100% of current price).
 - **NEW**: Target (Resistance) quick fill buttons (+3%, +5%, +8%, +10%) to plan upside targets as % of current price.
 - **NEW**: Target stale warning when target is below current price.
-- **NEW**: Auto-fetch: when provider=MarketData.app and local proxy available, page auto-fetches expirations and put chain on load.
+- **NEW**: Auto-fetch: when provider=MarketData.app and local proxy available, page auto-fetches expirations and put chain on load. Provider now defaults to MarketData.app when proxy is detected, so fetch starts immediately on page open without any manual switch.
 - **NEW**: Apply prompt shown after real chain fetch: guides user to click Use in Comparison Table to replace example rows with live data.
 - **NEW**: Stale comparison warning shown while comparison rows contain example data not reflecting current price.
 - **NEW**: Use in Comparison Table now REPLACES example rows with live candidates and clears stale warning.

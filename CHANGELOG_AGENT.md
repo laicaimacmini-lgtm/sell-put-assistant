@@ -1,5 +1,26 @@
 # Agent Changelog
 
+## 2026-05-09 — Fix auto-fetch to fire on page open
+
+### Problem
+Auto-fetch was implemented but never actually triggered on page load because:
+1. `useState('mock')` as default — component opened in mock mode, useEffect skipped
+2. `useRef(new Set())` dedup with no cleanup — React StrictMode double-invocation caused the second effect run to be silently skipped
+
+### Fix
+- Default provider now initializes to `'marketdata'` when `VITE_OPTIONS_API_BASE` is set (lazy useState initializer)
+- Replaced `useRef(new Set())` with single-key `autoFetchKeyRef` + cleanup function that resets the ref on unmount, making StrictMode double-mount work correctly
+- Added `cancelled` flag to prevent stale state updates from aborted fetches
+- Fixed `chain.puts.length` JSX crash when puts is undefined
+
+### Tests Updated
+- "fetches mock options data": now waits for auto-fetch then switches to mock before manual fetch
+- "fetches Yahoo expirations": now accounts for auto-fetch on marketdata before switching to yahoo
+- "does not auto-fetch when provider is not marketdata": now clears apiBase so provider defaults to mock
+
+### Result
+Page opens → auto-fetch fires immediately when MarketData proxy is available → no manual "Fetch Expirations" click needed
+
 ## 2026-05-09 — Add MarketData local dev scripts
 
 ### Changes
